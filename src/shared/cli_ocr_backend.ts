@@ -30,6 +30,7 @@ export let schedule = async (input: Buffer | string): Promise<RecognizeResult> =
 
     return execFileP("tesseract", [file_name, "-", "-c", "hocr_char_boxes=1", "hocr"]).then((v) => {
         let out = v.stdout;
+        console.log(out);
         let words = [] as Word[];
         
         for(let line in out.split("\n")) {
@@ -61,7 +62,8 @@ export let schedule = async (input: Buffer | string): Promise<RecognizeResult> =
                         y1: parseInt(rege[4])
                     }
                 });
-                words[words.length - 1].text += decodeEntities(rege[5])
+                words[words.length - 1].text += decodeEntities(rege[5]);
+                console.log(rege[5]);
             }
         }
 
