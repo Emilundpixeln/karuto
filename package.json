@@ -11,16 +11,11 @@
   "license": "ISC",
   "dependencies": {
     "@types/sharp": "^0.30.5",
-    "canvas": "^2.9.3",
     "discord.js": "^13.6.0",
-    "image-js": "^0.34.1",
     "js-levenshtein": "^1.1.6",
     "node-fetch-commonjs": "^3.1.1",
-    "pako": "^2.0.4",
-    "protobufjs": "^6.11.3",
     "sharp": "^0.30.7",
     "tesseract.js": "^2.1.5",
-    "vm2": "^3.9.10",
     "ws": "^8.8.0"
   },
   "devDependencies": {
