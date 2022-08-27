@@ -16,4 +16,5 @@ node_modules
 *.exe
 tmp/*
 *.bat
+
 config.json

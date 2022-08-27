@@ -1,12 +1,29 @@
-import Tesseract, { createWorker, Worker } from 'tesseract.js';
 import ls from 'js-levenshtein';
 import * as sharp from 'sharp';
 import { series_strs, character_strs, wl_data } from './klu_data.js';
 import fetch from 'node-fetch-commonjs';
-//import { createHash } from 'crypto';
+import { Bbox, RecognizeResult, Word } from "./ocr_backend_shared.js"
+import { use_cli_backend } from "./../config.js"
 
-let workers: Array<Worker> = [];
-let ready_workers: Array<Worker> = [];
+let load_backend: (worker_count: number) => Promise<void>;
+let prepare: (image: sharp.Sharp) => Promise<Buffer | string>;
+let schedule: (input: Buffer | string) => Promise<RecognizeResult>;
+let load_module: Promise<void>;
+
+if(use_cli_backend) {
+    load_module = import("./cli_ocr_backend.js").then(M => {
+        load_backend = M.load_backend;
+        prepare = M.prepare;
+        schedule = M.schedule;
+    });
+  
+} else {
+    load_module = import("./tesseract_js_backend.js").then(M => {
+        load_backend = M.load_backend;
+        prepare = M.prepare;
+        schedule = M.schedule;
+    });
+}
 
 let lefts = [
     55,
@@ -71,20 +88,10 @@ const rectanglesSeries = [
       height: height,
     },
   ];
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-let schedule = async (input: Buffer): Promise<Tesseract.RecognizeResult> => {
-    while (ready_workers.length == 0) {
-        await sleep(20);
-    }
-    let worker = ready_workers.pop();
-    let result = await worker.recognize(input);
-    ready_workers.push(worker);
-    return result;
-}
 
-let sharp_rect = (box: Tesseract.Bbox, color: string) => {
+
+
+let sharp_rect = (box: Bbox, color: string) => {
     let svg = Buffer.from(`
         <svg width="${Math.max(box.x1 - box.x0, 1)}" height="${Math.max(box.y1 - box.y0, 1)}">
             <rect x="0" y="0" width="${Math.max(box.x1 - box.x0, 1)}" height="${Math.max(box.y1 - box.y0, 1)}" style="fill:rgb(0,0,0,0);stroke-width:1;stroke:${color}" />
@@ -106,21 +113,8 @@ export let recognize: (url: string, log_file: boolean) => Promise<OCR_Data[]> = 
 export let load = (async (worker_count: number) => {
 
 
-    for(let i = 0; i < worker_count; i++) {
-        let worker = createWorker({ langPath: "eng.traineddata" });
-        await worker.load();
-        await worker.loadLanguage('eng');
-        await worker.initialize('eng');
-    
-        let real_allowed = "6314Cicad#ompsRurkSn YevM'5JjAtH-W0NhgOTFwbKIyVlqGBzDPL=xöf78*:U./QE29Z&+()ü%–Xéá!,?×ôëâ[]²\"è~º;_³ÉíäðúóÓåç@ï°ÖòßñàÜµ{}êýÄû—½øìþ$";
-        await worker.setParameters({
-            tessedit_char_whitelist: real_allowed,
-            tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK
-        });
-        workers.push(worker);
-        ready_workers.push(worker);
-
-    }
+    await load_module;
+    await load_backend(worker_count);
     console.log("ocr ready");
 
 
@@ -142,8 +136,8 @@ export let load = (async (worker_count: number) => {
             let pipe = (img: sharp.Sharp): sharp.Sharp => img.linear(contrast, - (128 * contrast) + 128 + offset); // sharpen?
             let [series_images, char_images] = await Promise.all(
                 [
-                    Promise.all(Array(images).fill(null).map((_, i) => pipe(img.extract(rectanglesSeries[i])).toBuffer())),
-                    Promise.all(Array(images).fill(null).map((_, i) => pipe(img.extract(rectangles[i])).toBuffer()))
+                    Promise.all(Array(images).fill(null).map((_, i) => prepare(pipe(img.extract(rectanglesSeries[i]))))),
+                    Promise.all(Array(images).fill(null).map((_, i) => prepare(pipe(img.extract(rectangles[i])))))
                 ]);
         
         //  img.toFile("img.png");
@@ -152,11 +146,11 @@ export let load = (async (worker_count: number) => {
             let series_matches: Array<Array<[number, string]>> = Array(4).fill(null);
             let raw_s: Array<string> = Array(4).fill(null);
             let raw_c: Array<string> = Array(4).fill(null);
-            let series_promise: Array<Promise<Tesseract.RecognizeResult>> = Array(4).fill(undefined);
-            let char_promise: Array<Promise<Tesseract.RecognizeResult>> = Array(4).fill(undefined);
+            let series_promise: Array<Promise<RecognizeResult>> = Array(4).fill(undefined);
+            let char_promise: Array<Promise<RecognizeResult>> = Array(4).fill(undefined);
             console.log(`processing took ${Date.now() - begin}ms`);
             begin = Date.now();
-            let relayout = (v: Tesseract.RecognizeResult): [string, Tesseract.Word[]] => {
+            let relayout = (v: RecognizeResult): [string, Word[]] => {
                 if(v.data.words.length == 0) {
                     return ["", []];
                 }
@@ -164,7 +158,7 @@ export let load = (async (worker_count: number) => {
   
                 let avr_height = heights.reduce((a, b) => a + b) / heights.length;
                 let filtered = v.data.words.map(w => {
-                    let word: Tesseract.Word = {
+                    let word: Word = {
                         ...w
                     }
                     let new_symbols = w.symbols.filter(s => s.bbox.y1 - s.bbox.y0 < avr_height * 1.5);
@@ -185,7 +179,7 @@ export let load = (async (worker_count: number) => {
                 return [sorted.reduce((p, c) => p + " " + c.text, "").trim(), sorted];
             }
 
-            let debug = async (v: Tesseract.Word[], v_old: Tesseract.Word[], rect: typeof rectangles[0], filename: string) => {
+            let debug = async (v: Word[], v_old: Word[], rect: typeof rectangles[0], filename: string) => {
 
                 let part = pipe(img.extract(rect));
                 part.toFile(filename);

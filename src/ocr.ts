@@ -1,7 +1,7 @@
 import { collect, collect_by_prefix } from './collector.js';
 import { MessageEmbed, TextBasedChannel } from 'discord.js';
 import { wl_data } from './shared/klu_data.js';
-import { load, recognize } from './shared/cli_ocr_backend.js';
+import { load, recognize } from './shared/ocr.js';
 
 
 let worker_count = 1;
