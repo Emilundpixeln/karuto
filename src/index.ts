@@ -3,9 +3,11 @@ import { readFileSync, writeFileSync } from "fs";
 import fetch from "node-fetch"
 import MessageCollector from "./collector.js"
 import { url_to_ident, klu_data } from "./shared/klu_data.js"
+import { BOT_TOKEN, enable_search } from "./config.js";
 
 const client = new Discord.Client({intents: ["GUILDS", "GUILD_MESSAGES", "GUILD_MESSAGE_REACTIONS", "GUILD_PRESENCES"]});
-const config = JSON.parse(readFileSync("./config.json", "utf-8"));
+
+
 
 const KARUTA_ID = "646937666251915264";
 
@@ -170,11 +172,14 @@ client.on("messageDelete", function(message){
 });
 
 
-client.login(config.BOT_TOKEN).then(_ => MessageCollector.on_init(client));
+client.login(BOT_TOKEN).then(_ => MessageCollector.on_init(client));
 
 
 import "./resolve.js"
-import "./search.js"
+if(enable_search)
+{
+    import("./search.js")
+}
 import "./debug.js"
 import "./spot_sync.js"
 import "./deleted_messages.js"
