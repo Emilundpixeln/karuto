@@ -1,9 +1,9 @@
-import { Discord } from "../../karuta-indexer/src/shared/discord.js"
 import { collect, collect_by_prefix, MessageType } from './collector.js';
 import { promises, createWriteStream } from 'fs';
 import { Message, MessageEmbed } from "discord.js";
-import { MESSAGE_CREATE } from "../../karuta-indexer/src/shared/discord_types.js";
-import client from 'https';
+
+
+
 let store: {
     users: { [id: string]: { [card: string]: number } };
     last_clear: number;
@@ -27,7 +27,6 @@ promises.readFile("datecd.json", { encoding: "utf-8"}).then((data) => {
     store = JSON.parse(data);
     if(!store.users) store.users = {};
     if(!store.last_clear) store.last_clear = 0;
-    let discord_client = new Discord(undefined);
 
 
     let process = (description: string, message_id: string) => {
@@ -49,27 +48,6 @@ promises.readFile("datecd.json", { encoding: "utf-8"}).then((data) => {
         save_store();
     };
     let b = Date.now();
-    discord_client.on_MESSAGE_CREATE((message) => {
-        if(message.guild_id == "715844052700102757") console.log("KIT", (Date.now() - b) / 1000);
-        if(message.author.id == "646937666251915264" && message.embeds.length > 0
-        && message.embeds[0].title == "Date Minigame")  process(message.embeds[0].description, message.id);
-
-  
-    });
-
-    discord_client.on_MESSAGE_UPDATE((message) => {
-    // console.log(message);
-        // TODO confirm author are correct
-        if(/*message.author.id == "646937666251915264" && */message.embeds.length > 0
-        && message.embeds[0].title == "Date Minigame")  process(message.embeds[0].description, message.id);
-
-    }); 
-    
-    discord_client.on_ready().then(_ => {
-        discord_client.subscribe("696070301842276353");
-        discord_client.subscribe("715844052700102757");
-    });
-
 
     collect((message) => {
         if(!(message.author.id == "646937666251915264" && message.embeds.length > 0
