@@ -107,7 +107,7 @@ export let load = (async (worker_count: number) => {
 
 
     for(let i = 0; i < worker_count; i++) {
-        let worker = createWorker();
+        let worker = createWorker({ langPath: "eng.traineddata" });
         await worker.load();
         await worker.loadLanguage('eng');
         await worker.initialize('eng');
@@ -188,12 +188,12 @@ export let load = (async (worker_count: number) => {
             let debug = async (v: Tesseract.Word[], v_old: Tesseract.Word[], rect: typeof rectangles[0], filename: string) => {
 
                 let part = pipe(img.extract(rect));
-
-                part.composite([
+                part.toFile(filename);
+         /*       part.composite([
                         ...v.map(w => sharp_rect(w.bbox, "green")),
                         ...v_old.filter(w => !v.includes(w)).map(w => sharp_rect(w.bbox, "red")),
 
-                    ]).toFile(filename);
+                    ]).toFile(filename);*/
 
             }
        /*     let _begin = Date.now();
