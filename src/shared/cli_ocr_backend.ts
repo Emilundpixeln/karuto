@@ -52,7 +52,7 @@ export let schedule = async (input: Buffer | string): Promise<RecognizeResult> =
                 });
             }
             else if(is_char) {
-                let rege = /'x_bboxes (\d+) (\d+) (\d+) (\d+); x_conf [\d\.]+'>([^<])<\/span>;/g.exec(line);
+                let rege = /'x_bboxes (\d+) (\d+) (\d+) (\d+); x_conf [\d\.]+'>([^<]+)<\/span>/g.exec(line);
                 if(!rege) console.error(line);
                 words[words.length - 1].symbols.push({
                     bbox: {
