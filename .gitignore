@@ -1,3 +1,4 @@
+config.json
 Build.exe
 Build
 BuildData
@@ -16,5 +17,4 @@ node_modules
 *.exe
 tmp/*
 *.bat
-
 config.json

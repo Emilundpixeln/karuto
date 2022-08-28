@@ -29,7 +29,8 @@ collect(async (msg) => {
 		if(ref_id && ignore.includes(ref_id[1])) return;
 
 		let expire_text = `Expires <t:${to_date(msg.id) + 60}:R>`;
-		let wl_text = "";
+		let img = [...msg.attachments.values()][0];
+		let wl_text = "\u2800\n\u2800\n\u2800\n\u2800" + (img.width > 900 ? "\n\u2800" : "");
 
 
 		let my_message = msg.reply(expire_text + "\n" + wl_text);
@@ -44,7 +45,7 @@ collect(async (msg) => {
 			update_message();
 		}, 60 * 1000);
 
-		let url = [...msg.attachments.values()][0].url;
+		let url = img.url;
 		
 		console.log(`ocr ${url}`);
 		let begin = Date.now();

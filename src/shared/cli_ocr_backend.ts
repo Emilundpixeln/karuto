@@ -36,7 +36,7 @@ export let schedule = async (input: Buffer | string): Promise<RecognizeResult> =
         for(let line of out.split("\n")) {
             let is_word = line.indexOf("<span class='ocrx_word'") != -1;
             let is_char = line.indexOf("<span class='ocrx_cinfo'") != -1;
-            console.log(line, is_char, is_word);
+
             if(is_word) {
                 let rege = /'bbox (\d+) (\d+) (\d+) (\d+);/g.exec(line);
                 if(!rege) console.error(line);

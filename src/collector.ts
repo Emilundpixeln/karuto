@@ -1,5 +1,12 @@
 import Discord, { Options } from "discord.js"
 
+
+export let is_reply_to_command = async (m: MessageType, commands: string[]) => {
+    if(!m.reference) return;
+    let a = (await m.fetchReference()).content.split(" ");
+    return a.length > 0 && commands.map(c => a[0].includes(c)).reduce((c, v) => c || v, false);
+}
+
 type MessageCollector = 
 {
     filter: (message: MessageType) => boolean,

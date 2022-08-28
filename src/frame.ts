@@ -1,14 +1,14 @@
 import { MessageEmbed } from "discord.js";
-import { collect, hook_message_updates } from "./collector.js"
+import { collect, hook_message_updates, is_reply_to_command } from "./collector.js"
 import { MessageHandler } from "./message_handler.js"
 
 
 
  
-collect((m) => {
+collect(async (m) => {
     if(m.author.id == "646937666251915264"
-        && m.embeds.length > 0
-        && (m.embeds[0].title == "Character Lookup" || m.embeds[0].title == "Character Results"))
+    && m.embeds.length > 0
+    && (m.embeds[0].title == "Character Lookup" || (m.embeds[0].title == "Character Results" && await is_reply_to_command(m, [ "lu", "lookup" ]))))
     {
 
         m.react("🖼");
