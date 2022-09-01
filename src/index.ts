@@ -192,6 +192,7 @@ import "./id.js"
 import "./frame.js"
 import "./datecd.js"
 import "./datesolver.js"
+import "./historic_images.js"
 
 
 import "./ocr.js"

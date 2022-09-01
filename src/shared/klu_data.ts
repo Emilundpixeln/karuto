@@ -27,6 +27,23 @@ export let url_to_ident = (url: string) => {
     }
 }
  
+export let url_to_ed = (url: string) => {
+    let versioned_url = "http://d2l56h9h5tj8ue.cloudfront.net/images/cards/versioned/";
+    
+    if(url.search(versioned_url) != -1) {
+        return parseInt(/-(\d+)-\d+\.jpg/g.exec(url)[1]);
+    } else {
+        return parseInt(/-(\d+)\.jpg/g.exec(url)[1]);
+    }
+}
+
+export let ident_to_url = (ident: string, ed: number, versioned: boolean, version: number = 0) => {
+    if(versioned)
+        return `http://d2l56h9h5tj8ue.cloudfront.net/images/cards/versioned/${ident}-${ed}-${version}.jpg`;
+    else
+        return `http://d2l56h9h5tj8ue.cloudfront.net/images/cards/${ident}-${ed}.jpg`;
+}
+
 
 export let series_strs = Object.keys(wl_data);
 export let character_strs = (series: string) => Object.keys(wl_data[series]) as Array<string>;

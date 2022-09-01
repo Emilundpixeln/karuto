@@ -18,3 +18,5 @@ node_modules
 tmp/*
 *.bat
 config.json
+ids.json
+datecd.json

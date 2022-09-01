@@ -1,5 +1,5 @@
 import { collect, collect_by_prefix, MessageType } from "./collector.js";
-import { unlinkSync, createWriteStream, existsSync } from 'fs';
+import { unlink, createWriteStream, existsSync } from 'fs';
 import client from 'https';
 import { execFile } from "child_process" 
 import { promisify } from "util" 
@@ -7,6 +7,7 @@ import { MessageEmbed, MessageActionRow, ButtonInteraction, MessageButton } from
 import { MessageHandler } from "./message_handler.js"
 
 const execFileP = promisify(execFile);
+const unlinkP = promisify(unlink);
 
 function downloadImage(url, filepath): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -79,7 +80,7 @@ let solve = async (m: MessageType, url: string, get_ring: boolean, my_message: M
             
             if(lines.length < 19)
             {
-                m.reply("Something went wrong...");
+                my_message.reply(m, "Something went wrong...");
                 console.error(lines);
                 return
             }
@@ -124,13 +125,14 @@ let solve = async (m: MessageType, url: string, get_ring: boolean, my_message: M
                 });
             })
             .finally(() => {
-                unlinkSync(path);
+                unlinkP(path);
             });
-        } catch (error) {
-            console.error(error);
-            if(existsSync(path))
-                unlinkSync(path);
-        }
+    } catch (error) {
+        my_message.reply(m, "Something went wrong...");
+        console.error(error);
+        if(existsSync(path))
+            unlinkP(path);
+    }
 
 }
 
@@ -144,8 +146,7 @@ collect_by_prefix("odate", async (m, cont) => {
 
     if(!url)
         return;
-    let my_message = new MessageHandler();
-    solve(m, url, true, my_message);
+    solve(m, url, true,  new MessageHandler());
 });
 
 collect((message) => {
@@ -153,7 +154,7 @@ collect((message) => {
     && message.embeds[0].title == "Date Minigame" )) return;
     if(message.channelId != "932714352589541376") return;
     
-    let my_message = new MessageHandler();
-    if(message?.embeds?.[0]?.image?.url)
-        solve(message, message?.embeds?.[0]?.image?.url, true, my_message);
+    let url = message?.embeds?.[0]?.image?.url;
+    if(url)
+        solve(message, url, true, new MessageHandler());
 })
