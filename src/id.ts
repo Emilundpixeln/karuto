@@ -3,6 +3,7 @@ import { on_client_available, collect, collect_by_prefix } from './collector.js'
 import { readFileSync, writeFileSync } from "fs"
 import { Message } from "discord.js"
 import ls from 'js-levenshtein';
+import { KARUTA_ID } from './constants.js'
 
 type Card = {
     char: string,
@@ -20,7 +21,7 @@ let process_message = (message: Message<boolean>): boolean => {
 
 
    // console.log(message.embeds.length > 0 && message.embeds[0].description)
-    if(!(message.embeds.length > 0 && message.author.id == "646937666251915264" && message.embeds[0].description
+    if(!(message.embeds.length > 0 && message.author.id == KARUTA_ID && message.embeds[0].description
         && message.embeds[0].description.startsWith("Cards carried by"))) return false;
 
 

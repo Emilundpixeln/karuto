@@ -1,7 +1,7 @@
 import { url_to_ident, url_to_ed, ident_to_url } from "./shared/klu_data.js"
 import { collect_by_prefix, hook_message_updates, is_reply_to_command } from "./collector.js"
 import { MessageHandler } from "./message_handler.js"
-
+import { KARUTA_ID } from './constants.js' 
 
 
  
@@ -10,7 +10,7 @@ collect_by_prefix("ohistory", async (m, cont) => {
 
     let ref = await m.fetchReference();
 
-    if(ref.author.id == "646937666251915264"
+    if(ref.author.id == KARUTA_ID
     && ref.embeds.length > 0
     && (ref.embeds[0].title == "Character Lookup" || (ref.embeds[0].title == "Character Results" && await is_reply_to_command(ref, [ "lu", "lookup" ]))))
 {

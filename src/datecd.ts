@@ -1,7 +1,7 @@
 import { collect, collect_by_prefix, MessageType } from './collector.js';
 import { promises, createWriteStream } from 'fs';
 import { Message, MessageEmbed } from "discord.js";
-
+import { KARUTA_ID } from './constants.js'
 
 
 let store: {
@@ -50,7 +50,7 @@ promises.readFile("datecd.json", { encoding: "utf-8"}).then((data) => {
     let b = Date.now();
 
     collect((message) => {
-        if(!(message.author.id == "646937666251915264" && message.embeds.length > 0
+        if(!(message.author.id == KARUTA_ID && message.embeds.length > 0
         && message.embeds[0].title == "Date Minigame" )) return;
 
         process(message.embeds[0].description, message.id);

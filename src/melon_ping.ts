@@ -1,24 +1,26 @@
 import { collect } from './collector.js';
-
+import { MessageButton } from 'discord.js';
+import { KARUTA_ID } from "./constants.js"
 
 
 
 collect((msg) => {
-    if(msg.author.id != "646937666251915264") return;
+    if(msg.author.id != KARUTA_ID) return;
     if(msg.channelId != "932713994886721576") return;
-
     if(msg.content && (msg.content.endsWith("is dropping 3 cards!") || msg.content == "I'm dropping 3 cards since this server is currently active!")) {
+        let has_candy = msg.components.some((comp) => comp.components.some(c => ["🍫", "🍬"].includes((c as MessageButton).emoji.name)));
 
-        let collector = msg.createReactionCollector({ filter: (react, user) => "🍉".includes(react.emoji.name), time: 10 * 1000 });
-        let karuta = false;
+        if(!has_candy) return;
+        let collector = msg.channel.createMessageCollector();
+
         let other = false;
-        collector.on("collect", async (reaction, user)  => {
-            if(user.id == "646937666251915264") karuta = true;
-            if(user.id != "646937666251915264") other = true;
+        collector.on("collect", async (message)  => {
+            if(message.author.id == KARUTA_ID && /<@\d+>, you snatched/g.exec(message.content)) 
+                other = true;
         });
         setTimeout(() => {
-            if(karuta && !other) {
-                msg.reply("🍉 Drop! <@&1007998487968886824>");
+            if(!other) {
+                msg.reply("🍬 Drop! <@&1007998487968886824>");
             }
         }, 10 * 1000);
     }

@@ -17,5 +17,6 @@ collect_by_prefix("ojson", async (m, cont) => {
     let msg = await (channel as TextBasedChannel).messages.fetch(match[3]);
 
     let str = JSON.stringify(msg, null, 2);
-    m.reply(str.length < 3800 ? { embeds: [ new MessageEmbed().setDescription(`\`\`\`\n${str}\n\`\`\``) ] } : "JSON to large 😭");
+    m.reply({ embeds: [ new MessageEmbed().setDescription(`\`\`\`\n${str.substr(0, 3800).replaceAll("```", "\\`\\`\\`")}\n\`\`\``) ] });
 } )
+

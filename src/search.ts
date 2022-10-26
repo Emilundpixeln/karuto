@@ -51,7 +51,7 @@ let join_max_size_2 = <T>(lines: Array<T>, to_string: (t: T) => string, length: 
 
     let cur_text = "";
     let cur_obj: Array<T> = [];
-    do {
+    while(lines.length > 0) {
         let m = lines.shift();
         let str = to_string(m);
         if(str.length + cur_text.length + seperator.length < length) {
@@ -63,7 +63,7 @@ let join_max_size_2 = <T>(lines: Array<T>, to_string: (t: T) => string, length: 
             cur_text = str;
             cur_obj = [ m ];
         }
-    } while(lines.length > 0);
+    } 
     if(cur_text.length > 0)
         ret.push({ str: cur_text, objects: cur_obj });
     return ret;
@@ -95,9 +95,12 @@ let update_message = async (pm: PastMessage, inter: Discord.MessageComponentInte
                 .setDisabled(pm.index == pm.pages.length - 1),
         );
 
-    let body = { embeds: pm.pages[pm.index].embeds, components: [ row ]};
-    if(inter)
+    let body = pm.pages.length == 0 ? { embeds: [new MessageEmbed().setColor(0x00FFFF).setTitle("Search matched 0 cards") ] } :{ embeds: pm.pages[pm.index].embeds, components: [ row ]};
+    if(inter){
         inter.update(body);
+        // Todo fix this. Need to set this here so we wont defer this later in index.ts
+        inter.deferred = true;
+    }
     else
         pm.msg.edit(body);
 }
@@ -136,11 +139,13 @@ collect_by_prefix("os", async (message, content) => {
         }
         else {
             console.log(value.stdout.slice(0, 10000));
-            let lines = value.stdout.split("\n");
-            let matches = Number(lines[0]);
+            let lines = value.stdout.trim().split("\n").map(s => s.replaceAll("\r", ""));
+        
+            let matches_inacc = lines[0].endsWith("+");
+            let matches = Number(matches_inacc ? lines[0].substr(0, lines[0].length - 1) : lines[0]);
 
-
-            const cards = lines.slice(1, -1).map((line) => {
+        //    console.log(lines);
+            const cards = lines.slice(1).map((line) => {
                 let parts = line.split("\t");
 
                 return {
@@ -153,6 +158,7 @@ collect_by_prefix("os", async (message, content) => {
                     owner: parts[6].trimRight(),
                 };
             });
+           // console.log(cards);
             if(past_messages.length >= 10) {
                 let destroy = past_messages.shift();
                 destroy.collector.stop();
@@ -162,7 +168,7 @@ collect_by_prefix("os", async (message, content) => {
             let collector = my_message.createMessageComponentCollector({ time: 10 * 60 * 1000 });
             let pm = { msg: my_message, index: 0, collector, pages: paged.map((page, i) => ({ 
                 cards: page.objects,
-                embeds: [ new MessageEmbed({ description: page.str }).setColor(0x00FFFF).setTitle(`Search matched ${matches} card${matches == 1 ? "" : "s"}   Page ${i + 1}/${paged.length}`) ],
+                embeds: [ new MessageEmbed({ description: page.str }).setColor(0x00FFFF).setTitle(`Search matched ${matches}${matches_inacc ? " (or more)" : ""} card${matches == 1 ? "" : "s"}   Page ${i + 1}/${paged.length}`) ],
             }))}
             past_messages.push(pm);
      

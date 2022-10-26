@@ -1,5 +1,5 @@
-import Discord, { Options } from "discord.js"
-
+import Discord, { Options, CommandInteraction, MessageManager, TextBasedChannel } from "discord.js"
+import { SlashCommandBuilder } from "@discordjs/builders"
 
 export let is_reply_to_command = async (m: MessageType, commands: string[]) => {
     if(!m.reference) return;
@@ -13,6 +13,12 @@ type MessageCollector =
     callback: (message: MessageType) => void,
     init: () => void,
     trigger_on_message_update: boolean,
+}
+type MessageUpdateCollector = 
+{
+    filter: (message: MessageType, old_message: MessageType) => boolean,
+    callback: (message: MessageType, old_message: MessageType) => void,
+    init: () => void
 }
 type MessageDeleteCollector = 
 {
@@ -32,6 +38,7 @@ type ClientCollector =
 
 
 let message_collectors: Array<MessageCollector> = [];
+let message_update_collectors: Array<MessageUpdateCollector> = [];
 let message_delete_collectors: Array<MessageDeleteCollector> = [];
 let presence_collectors: Array<PresenceCollector> = [];
 let client_collectors: Array<ClientCollector> = [];
@@ -42,14 +49,30 @@ export let collect = (callback: (message: MessageType) => void, options: { filte
     message_collectors.push({ filter: options?.filter, callback, init: options?.init, trigger_on_message_update: options?.trigger_on_message_update ?? false });
 }
 
+export let collect_transition = (callback: (message: MessageType, old_message: MessageType) => void, options: { filter?: (message: MessageType, old_message: MessageType) => boolean, init?: () => void } = undefined): void => {
+    message_update_collectors.push({ filter: options?.filter, callback, init: options?.init });
+}
 
-export let hook_message_updates = (message: MessageType, callback: (message: MessageType) => void, timeout_ms: number = 60_000) => {
-    let item = { filter: m => m.id == message.id, callback, init: undefined, trigger_on_message_update: true } as MessageCollector;
+export type Deleter = () => void;
+
+export let hook_message_updates = (message: MessageType, callback: (message: MessageType) => void, timeout_ms: number = 60_000): Deleter => {
+    let item = { filter: (m: MessageType) => m.id == message.id, callback, init: undefined, trigger_on_message_update: true };
     message_collectors.push(item);
-    setTimeout(() => message_collectors.filter((m) => m != item), timeout_ms);
+    let deleter = () => message_collectors.filter((m) => m != item);
+    setTimeout(deleter, timeout_ms);
 
     // call with initial state
     callback(message);
+    return deleter;
+}
+
+let commands = [] as {
+    proto: Partial<SlashCommandBuilder>,
+    callback: (interaction: CommandInteraction) => void
+}[];
+export let SlashCommand = SlashCommandBuilder;
+export let register_command = (command: Partial<SlashCommandBuilder>, callback: (interaction: CommandInteraction) => void) => {
+    commands.push({ proto: command, callback });
 }
 
 export let collect2 = (filter: (message: MessageType) => boolean, callback: (message: MessageType) => void, init: () => void = () => {}, trigger_on_message_update: boolean = false): void => {
@@ -86,11 +109,27 @@ export let on_message = (message: MessageType): void => {
     });
 }
 
-export let on_message_update = (message: MessageType): void => {
+export let on_interaction = (interaction: Discord.Interaction<Discord.CacheType>): void => {
+    if(!interaction.isCommand()) return;
+
+    let com = commands.find(v => v.proto.name == interaction.commandName);
+
+    if(com) {
+        com.callback(interaction as CommandInteraction);
+    }
+    else {
+        console.error("Didn't find command for", interaction.commandName);
+    }
+}
+
+export let on_message_update = (old_message: MessageType, message: MessageType): void => {
 
     message_collectors.map((v) => {
-  
         if(v.trigger_on_message_update && (!v.filter || v.filter(message))) v.callback(message);
+    });
+
+    message_update_collectors.map((v) => {
+        if(!v.filter || v.filter(message, old_message)) v.callback(message, old_message);
     });
 }
 export let on_message_delete = (message: MessageType): void => {
@@ -109,13 +148,57 @@ export let on_init = (client: Discord.Client): void => {
     message_collectors.map((v) => {
         v.init && v.init();
     });
+    message_update_collectors.map((v) => {
+        v.init && v.init();
+    });
     client_collectors.map((v) => {
-        v.callback(client)
+        v.callback(client);
     });
 
 }
 
+export let get_commands_json = () => {
+    return commands.map(v => v.proto.toJSON());
+}
+
+export let get_most_recent_message = (messages: MessageManager, filter: (msg: MessageType) => boolean) => {
+    let max = undefined as MessageType;
+    messages.cache.map((message, key) => {
+        if(max && max.createdTimestamp > message.createdTimestamp) return;
+        if(!filter(message)) return;
+        max = message;
+    });
+    return max;
+}
+
+export let get_all_messages_untill = async (channel: TextBasedChannel, should_stop: (msg: MessageType) => boolean) => {
+    let before = undefined as string;
+    let finished = false;
+    let i = 0;
+    while(!finished)
+    {
+        let msgs = await channel.messages.fetch(before ? {
+            limit: 100,
+            before
+        } : {
+            limit: 100
+        });
+ 
+        for (const [id, msg] of msgs) {
+            before = id;
+          //  console.log(msg.content)
+            if(should_stop(msg)) {
+                finished = true;
+                break
+            }
+        }
+        if(i++ == 100) {
+            console.error(`get_all_messages_untill was never told to stopped!`);
+            break
+        }
+    }
+}
 
 export default {
-    on_message, on_init, on_presence_update, on_message_delete, on_message_update
+    on_message, on_init, on_presence_update, on_message_delete, on_message_update, on_interaction, get_commands_json
 };

@@ -9,6 +9,8 @@ function sleep(ms) {
 }
 
 export let load_backend = async (worker_count: number) => {
+    workers = [];
+    ready_workers = [];
     for(let i = 0; i < worker_count; i++) {
         let worker = createWorker();
         await worker.load();
