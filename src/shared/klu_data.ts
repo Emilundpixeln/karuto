@@ -2,6 +2,7 @@ import { readFileSync } from "fs"
 
 export let klu_data = undefined as { [series: string]: { [character: string]: string }};
 export let wl_data = undefined as { [series: string]: { [character: string]: { wl: number, date: number }}};
+export const wl_data_too_new = -1;
 
 export let url_to_ident = (url: string) => {
 
@@ -48,10 +49,14 @@ export let ident_to_url = (ident: string, ed: number, versioned: boolean, versio
 export let series_strs = undefined as string[];
 export let character_strs = (series: string) => Object.keys(wl_data[series]) as Array<string>;
 
+export const wl_data_path = "wl_data.json";
+
 export let reload_data = () => {
     klu_data = JSON.parse(readFileSync("good_klu_data.json", { encoding: "utf-8" })).store;
-    wl_data = JSON.parse(readFileSync("wl_data.json", { encoding: "utf-8" }));
+    wl_data = JSON.parse(readFileSync(wl_data_path, { encoding: "utf-8" }));
     series_strs = Object.keys(wl_data);
 };
+
+
 
 reload_data();

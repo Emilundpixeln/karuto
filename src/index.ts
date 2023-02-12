@@ -1,11 +1,14 @@
 import Discord, { MessageComponentInteraction } from "discord.js"
 import MessageCollector, { get_commands_json } from "./collector.js"
-import { BOT_TOKEN, enable_search } from "./config.js";
+import { BOT_TOKEN } from "./config.js";
 import { REST } from '@discordjs/rest';
 import { Routes } from 'discord-api-types/v9';
 
 const client = new Discord.Client({intents: ["GUILDS", "GUILD_MESSAGES", "GUILD_MESSAGE_REACTIONS", "GUILD_PRESENCES"]});
+client.on("debug", async function(message) { 
+   // console.log(message);
 
+}); 
 client.on("messageCreate", async function(message) { 
     MessageCollector.on_message(message);
 }); 
@@ -43,10 +46,7 @@ client.login(BOT_TOKEN).then(_ => MessageCollector.on_init(client));
 
 
 import "./resolve.js"
-if(enable_search)
-{
-    import("./search.js")
-}
+import "./search.js"
 import "./debug.js"
 import "./spot_sync.js"
 import "./deleted_messages.js"
@@ -55,7 +55,7 @@ import "./alias.js"
 import "./script.js"
 import "./kv_wl.js"
 import "./melon_ping.js"
-import "./id.js"
+//import "./id.js"
 import "./frame.js"
 import "./datecd.js"
 import "./datesolver.js"

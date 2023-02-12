@@ -17,11 +17,26 @@ export class MessageHandler
     }
 
     send(channel: TextBasedChannel, content: string | Omit<MessageEditOptions, "flags"> | MessagePayload) {
-        this.send_impl(content, () => channel.send(content));
+        return this.send_impl(content, () => channel.send(content));
+    }
+
+    edit(content: string | Omit<MessageEditOptions, "flags"> | MessagePayload) {
+        return this.send_impl(content, () => {
+            console.error("MessageHandler edit, no Message was send!");
+            return undefined;
+        });
+    }
+
+    
+    reply_to_given_interaction(content: string | Omit<MessageEditOptions, "flags"> | MessagePayload) {
+        return this.send_impl(content, () => {
+            console.error("MessageHandler reply_to_given_interaction, no interaction_command!");
+            return undefined;
+        });
     }
 
     reply(message: MessageType, content: string | Omit<MessageEditOptions, "flags"> | MessagePayload) {
-        this.send_impl(content, () => message.reply(content));
+        return this.send_impl(content, () => message.reply(content));
     }
 
     defer_on_edit(interaction: MessageComponentInteraction<CacheType>) {
@@ -44,5 +59,6 @@ export class MessageHandler
             else
                 this.message = sender();
         }
+        return this.message;
     }
 }

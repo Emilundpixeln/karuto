@@ -1,5 +1,5 @@
 import { collect } from './collector.js';
-import { wl_data } from './shared/klu_data.js'
+import { wl_data, wl_data_too_new } from './shared/klu_data.js'
 import { KARUTA_ID } from './constants.js'
 
 collect(async (msg) => {
@@ -22,7 +22,7 @@ collect(async (msg) => {
         let char = alias ? alias[1] : char_bold.substr(2, char_bold.length - 4);
         let wl_dat = wl_data?.[series]?.[char];
         if(wl_dat)
-            msg.reply(`\`♡${wl_dat.wl}\`${Date.now() - wl_dat.date < 1000 * 60 * 60 * 24 * 7 ? "" : " ⌛"}`);
+            msg.reply(`\`♡${wl_dat.wl != wl_data_too_new ? wl_dat.wl : "[NEW]"}\`${Date.now() - wl_dat.date < 1000 * 60 * 60 * 24 * 7 ? "" : " ⌛"}`);
         else
             msg.reply("No Data (Card is aliased?)");
     }

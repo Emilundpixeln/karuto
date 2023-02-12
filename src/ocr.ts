@@ -1,13 +1,11 @@
 import { collect, collect_by_prefix, collect_by_prefix_and_filter, MessageType } from './collector.js';
 import { MessageEmbed, TextBasedChannel } from 'discord.js';
-import { wl_data } from './shared/klu_data.js';
-import { load, recognize } from './shared/ocr.js';
+import { recognize } from './shared/ocr.js';
 import { is_admin } from "./admin.js"
 import { KARUTA_ID } from "./constants.js"
+import { send_offset_ms } from './util.js';
 
-let worker_count = 1;
-let worker_count_fast = 4;
-let loaded = load(worker_count);
+
 
 let do_update = true;
 
@@ -15,24 +13,27 @@ let do_update = true;
 collect_by_prefix_and_filter("ocrtoggle", (m) => is_admin(m.author.id), async (m, cont) => {
 	do_update = !do_update;
 	let text = do_update ? "Normal dropmode" : "Fast dropmode";
-	let my_msg = m.reply(`Loading ${text}...`);
-	loaded = load(do_update ? worker_count : worker_count_fast).then(async _ => {
-		(await my_msg).edit(`Loaded ${text}`);
-	});
+//	let my_msg = m.reply(`Loading ${text}...`);
+
 })
 
 
-let do_ocr = async (url: string, msg_id: string | undefined, img_width: number | undefined, reply_to: MessageType) => {
+let do_ocr = async (url: string, created_timestamp: number | undefined, img_width: number | undefined, reply_to: MessageType) => {
 
-	await loaded;
+	console.log(`OCR start: ${Date.now() - created_timestamp}`);
+	//https://cdn.discordapp.com/attachments/932713994886721576/1034886603568594984/card.webp
+	//https://media.discordapp.net/attachments/932713994886721576/1035737384224047135/card.webp?width=400&height=200
+	/*if(img_width) {
+		url = `${url}?width=400&height=${img_width > 900 ? "151" : "200"}`;
+		console.log(`Using url ${url}`);
+	}*/
+	let recognize_result_p = recognize(url, false);
 
-
-    let to_date = (time: string) => Number(((BigInt(time) >> BigInt(22)) + BigInt(1420070400000)) / BigInt(1000));
-	let expire_text = msg_id ? `Expires <t:${to_date(msg_id) + 60}:R>` : "?";
+	let expire_text = created_timestamp ? `Expires <t:${Math.floor(created_timestamp / 1000) + 60}:R>` : "?";
 	let wl_text = img_width != undefined ? "\u2800\n\u2800\n\u2800\n\u2800" + (img_width> 900 ? "\n\u2800" : "") : "";
 
-
-	let my_message = do_update ? reply_to.reply(expire_text + "\n" + wl_text) : undefined;
+	let do_initial_message = false;
+	let my_message = do_update && do_initial_message ? reply_to.reply(expire_text + "\n" + wl_text) : undefined;
 	let update_message = async () => {
 		try {
 			if(!my_message) 
@@ -43,7 +44,7 @@ let do_ocr = async (url: string, msg_id: string | undefined, img_width: number |
 	}
 
 
-	if(msg_id && (to_date(msg_id) + 60) * 1000 - Date.now() > 0) {
+	if(created_timestamp && created_timestamp + 60 * 1000 - Date.now() > 0) {
 		if(do_update)
 		{
 			setTimeout(async () => {
@@ -53,7 +54,7 @@ let do_ocr = async (url: string, msg_id: string | undefined, img_width: number |
 			
 		}
 
-	} else if(msg_id) {
+	} else if(created_timestamp) {
 		expire_text = "Expired";
 	}
 
@@ -62,20 +63,34 @@ let do_ocr = async (url: string, msg_id: string | undefined, img_width: number |
 	console.log(`ocr ${url}`);
 	let begin = Date.now();
 	let highest_wl = 0;
-	wl_text = (await recognize(url, false)).map(v => {
-		let wl_dat = wl_data?.[v.series]?.[v.char] ?? { wl: 0, date: 0 };
-		if(v.rel_err >= 0.3) 
-		{
-			// Log
-			console.warn(`OCR: Low confidence for ${url}`);
-			console.warn(v);
-		}
-		highest_wl = Math.max(highest_wl, wl_dat.wl);
-		return `\`♡${wl_dat.wl}\` **${v.char}** ${v.series}${v.rel_err < 0.3 ? "" : "  🚨**Low Confidence**🚨"}${Date.now() - wl_dat.date < 1000 * 60 * 60 * 24 * 7 ? "" : " ⌛ "}||Confidence: ${(100 - 100 * v.rel_err).toFixed(0)}%||`
-	}).join("\n") + "\n||Alle Angaben ohne Gewähr||";
-	console.log(`OCR took ${Date.now() - begin}ms`);
+	let recognize_result = await recognize_result_p;
+
+	wl_text = recognize_result != undefined ? 
+		recognize_result.map(v => {
+			if(v.confidence < 0.7) 
+			{
+				// Log
+				console.warn(`OCR: Low confidence for ${url}`);
+				console.warn(v);
+			}
+			highest_wl = Math.max(highest_wl, v.wl);
+			return `\`♡${v.wl != -1 ? v.wl : "[NEW]"}\` **${v.char}** ${v.series}${v.confidence >= 0.7 ? "" : "  🚨**Low Confidence**🚨"}${Date.now() - v.date < 1000 * 60 * 60 * 24 * 7 ? "" : " ⌛ "} ||Confidence: ${(100 * v.confidence).toFixed(0)}%||`
+		}).join("\n") + "\n||Alle Angaben ohne Gewähr||"
+		: "Error"
+
+	let time = created_timestamp ? Date.now() - created_timestamp + send_offset_ms : 0;
+	console.log(`OCR took ${Date.now() - begin}ms. Finished ${created_timestamp ? time : "?"}ms after creation`);
 	if(do_update || highest_wl > 200)
-		update_message();
+	{
+		if(time < 1500 || time > 4000)
+			update_message();
+		else {
+			// Buttons enable in < 500ms, delay message to not disturb grabbing
+			// 2 seconds after grabbing is enabled
+			setTimeout(() => update_message(), 4000 - time);
+			console.log("Delaying message...");
+		}
+	}
 
 }
 collect(async (msg) => {
@@ -93,10 +108,10 @@ collect(async (msg) => {
 	if(msg.content && (msg.content.endsWith("is dropping 3 cards!") || msg.content == "I'm dropping 3 cards since this server is currently active!"
 						|| msg.content.endsWith("is dropping 4 cards!") || msg.content == "I'm dropping 4 cards since this server is currently active!")) {
 
-		await loaded;
+	
 
 		let img = [...msg.attachments.values()][0];
-		do_ocr(img.url, msg.id, img.width, msg);
+		do_ocr(img.url, msg.createdTimestamp, img.width, msg);
 	}
 });
 
@@ -110,26 +125,24 @@ collect_by_prefix("ocr", async (msg_a, cont) => {
 
 		if(!msg) return;
 	
-		if(msg.author.id != KARUTA_ID) return;
-		if(msg.channelId != "932713994886721576") return;
-	
 		
 	
 	
-		if(msg.author.id == KARUTA_ID && msg.content 
+		if((is_admin(msg.author.id) && [...msg.attachments.values()].length > 0)
+		|| msg.author.id == KARUTA_ID && msg.content 
 		&& (msg.content.endsWith("is dropping 3 cards!")
 		|| msg.content == "I'm dropping 3 cards since this server is currently active!"
 		|| msg.content.endsWith("is dropping 4 cards!")
 		|| msg.content == "I'm dropping 4 cards since this server is currently active!"
 		|| msg.content.includes("This drop has expired and the cards can no longer be grabbed"))) {
 			let img = [...msg.attachments.values()][0];
-
-			do_ocr(img.url, msg.id, img.width, msg);
+		
+			do_ocr(img.url, msg.createdTimestamp, img.width, msg);
 		}
 	}
 	else {
 
-		do_ocr(cont.trim(), undefined, undefined, msg_a);
+		do_ocr(cont.trim(), msg_a.createdTimestamp, undefined, msg_a);
 	}
 
 
@@ -138,7 +151,7 @@ collect_by_prefix("ocr", async (msg_a, cont) => {
 
 collect_by_prefix("odocr", async (msg, rest) => {
 
-    await loaded;
+
 	if(msg.author.id != "261587350121873408") return;
 
     let link = /discord\.com\/channels\/(\d+)\/(\d+)\/(\d+)/g.exec(rest);

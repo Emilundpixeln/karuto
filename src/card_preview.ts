@@ -1,7 +1,7 @@
 import Discord from "discord.js"
 import fetch from "node-fetch"
 import { url_to_ident, klu_data } from "./shared/klu_data.js"
-import { collect, Deleter, hook_message_updates } from "./collector.js"
+import { collect, collect2, Deleter, hook_message_updates } from "./collector.js"
 import { KARUTA_ID } from './constants.js'
 
 type Card = {
@@ -42,13 +42,11 @@ type Track = {
 
 let tracked_messages: Map<string, Track> = new Map();
 
-
-collect((message) => {
-    if (message.author.id != KARUTA_ID) return;
-    if (message.embeds.length < 1 || 
-        (!message.embeds[0].description.startsWith("Cards carried by") 
-        && !message.embeds[0].description.startsWith("Burn Cards")
-        && !message.embeds[0].title.startsWith("Character Results"))) return;
+collect2(message => message.author.id == KARUTA_ID
+    && message.embeds.length >= 1 && message.embeds[0].description
+    && (message.embeds[0].description.startsWith("Cards carried by") 
+    || message.embeds[0].description.startsWith("Burn Cards")
+    || message.embeds[0].title.startsWith("Character Results")), message => {
 
     let collecter = message.createReactionCollector({ filter: (reac, user) => reac.emoji.name == "🔎", dispose: true });
     

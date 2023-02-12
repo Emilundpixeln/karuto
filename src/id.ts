@@ -66,6 +66,7 @@ let min_snowflake = (a: string, b: string) => {
 let search_channels = [ "932713994886721576" ];
 
 on_client_available(async (client) => {
+ 
     store = JSON.parse(readFileSync("ids.json", { encoding: "utf-8"}));
     if(!store.after) store.after = {};
     if(!store.users) store.users = {};

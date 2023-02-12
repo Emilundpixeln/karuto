@@ -14,6 +14,7 @@ on_client_available((client) => {
             interval = interval ?? setInterval(() => {
 
                 let member = client.guilds.cache.get("830254135608737792").members.cache.get(follow_id);
+
                 on_presence_update(member.presence);
             }, 1000);
         }
@@ -43,7 +44,7 @@ wss_sender.on('connection', function connection(ws) {
 });
 let on_presence_update = async (data: Presence) => {
 
-
+    data.member.avatarURL({})
     if(data.activities.length == 0 || data.user.id != follow_id)
         return;
     let spotify_data = data.activities.find((e) => e.id == "spotify:1") as unknown as {

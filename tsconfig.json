@@ -1,14 +1,14 @@
 {
-    "compilerOptions": {
-        "module": "es2020",
-        "target": "ES2021",
-        "outDir": "dist",
-        "moduleResolution": "Node",
-        "allowSyntheticDefaultImports": true,
-        "resolveJsonModule": true,
-        "skipLibCheck": true
-    },
-    "include": [
-      "src/"
-    ]
+  "compilerOptions": {
+      "module": "es2020",
+      "target": "ES2021",
+      "outDir": "dist",
+      "moduleResolution": "Node",
+      "allowSyntheticDefaultImports": true,
+      "resolveJsonModule": true,
+      "skipLibCheck": true
+  },
+  "include": [
+    "src/"
+  ]
 }

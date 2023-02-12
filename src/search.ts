@@ -2,7 +2,7 @@ import { readFileSync, createWriteStream, createReadStream, readdirSync, ReadStr
 import Discord, { Collector, MessageEmbed } from "discord.js"
 import { execFile } from "child_process" 
 import { promisify } from "util" 
-import { collect_by_prefix } from "./collector.js"
+import { collect_by_prefix, Replyable, register_command, SlashCommand, as_message_or_throw } from "./collector.js"
 
 const execFileP = promisify(execFile);
   
@@ -75,22 +75,22 @@ let update_message = async (pm: PastMessage, inter: Discord.MessageComponentInte
         .addComponents(
             new Discord.MessageButton()
                 .setCustomId('first')
-                .setLabel('⏪')
+                .setEmoji('⏪')
                 .setStyle('SECONDARY')
                 .setDisabled(pm.index == 0),
             new Discord.MessageButton()
                 .setCustomId('previous')
-                .setLabel('◀️')
+                .setEmoji('◀️')
                 .setStyle('SECONDARY')
                 .setDisabled(pm.index == 0),
             new Discord.MessageButton()
                 .setCustomId('next')
-                .setLabel('▶️')
+                .setEmoji('▶️')
                 .setStyle('SECONDARY')
                 .setDisabled(pm.index == pm.pages.length - 1),
             new Discord.MessageButton()
                 .setCustomId('last')
-                .setLabel('⏩')
+                .setEmoji('⏩')
                 .setStyle('SECONDARY')
                 .setDisabled(pm.index == pm.pages.length - 1),
         );
@@ -121,14 +121,17 @@ let on_interaction = async (i: Discord.MessageComponentInteraction<Discord.Cache
     }
 }
 
+let do_search = (query: string, reply_to: Replyable) => {
+    query = query.trim();
 
+    // fix missing commas
+    [...query.matchAll(/[^\s,]\s+[cseopiCSEOPI][=:<>]/g)].reverse().forEach(v => {
+        query = query.substr(0, v.index + 1) + "," + query.substr(v.index + 1);
+    });
 
-collect_by_prefix("os", async (message, content) => {
-    if (message.author.bot) return;
-    let query = content.trim();
-
-    let my_message_p = message.reply({ embeds: [new MessageEmbed().setColor(0x2b05eb).setTitle("Searching ...")] } );
+    let my_message_p = as_message_or_throw(reply_to.reply({ embeds: [new MessageEmbed().setColor(0x2b05eb).setTitle("Searching ...")], fetchReply: true } ));
     console.log(query);
+    let begin = Date.now();
     execFileP("Search.exe", query.split(" ")).then(async (value: { stdout: string, stderr: string }) => {
         let my_message = await my_message_p;
         
@@ -138,14 +141,16 @@ collect_by_prefix("os", async (message, content) => {
             my_message.edit({ embeds: [new MessageEmbed().setColor(0x991128).setTitle(`Error: ${value.stderr}`)] });
         }
         else {
-            console.log(value.stdout.slice(0, 10000));
+            console.log(value.stdout.slice(0, 1000));
             let lines = value.stdout.trim().split("\n").map(s => s.replaceAll("\r", ""));
         
-            let matches_inacc = lines[0].endsWith("+");
-            let matches = Number(matches_inacc ? lines[0].substr(0, lines[0].length - 1) : lines[0]);
+            let matches_inacc = lines[1].endsWith("+");
+            let matches = Number(matches_inacc ? lines[1].substr(0, lines[1].length - 1) : lines[1]);
+            let total_cards = Number(lines[0]);
+            let time_taken = Date.now() - begin;
 
         //    console.log(lines);
-            const cards = lines.slice(1).map((line) => {
+            const cards = lines.slice(2).map((line) => {
                 let parts = line.split("\t");
 
                 return {
@@ -168,7 +173,10 @@ collect_by_prefix("os", async (message, content) => {
             let collector = my_message.createMessageComponentCollector({ time: 10 * 60 * 1000 });
             let pm = { msg: my_message, index: 0, collector, pages: paged.map((page, i) => ({ 
                 cards: page.objects,
-                embeds: [ new MessageEmbed({ description: page.str }).setColor(0x00FFFF).setTitle(`Search matched ${matches}${matches_inacc ? " (or more)" : ""} card${matches == 1 ? "" : "s"}   Page ${i + 1}/${paged.length}`) ],
+                embeds: [ new MessageEmbed({ description: page.str }).setColor(0x00FFFF)
+                    .setTitle(`Search matched ${matches}${matches_inacc ? " (or more)" : ""} card${matches == 1 ? "" : "s"}   Page ${i + 1}/${paged.length}`)
+                    .setFooter({ text: `Searched ${total_cards} cards in ${time_taken}ms.` })
+                ],
             }))}
             past_messages.push(pm);
      
@@ -178,7 +186,18 @@ collect_by_prefix("os", async (message, content) => {
         }
  
     });   
+}
+
+collect_by_prefix("os", async (message, content) => {
+    if (message.author.bot) return;
+   do_search(content, message);
 });
+
+register_command(new SlashCommand().setName("search").setDescription("Search for cards matching a query")
+    .addStringOption((input) => input.setName("query").setRequired(false).setDescription("Query similar to `kc` filter options").setMaxLength(400).setRequired(true).setMinLength(0))
+    .addIntegerOption(opt => opt.setName("max").setDescription("Maximum matches to display. Default: 1000").setMinValue(1).setMaxValue(10000).setRequired(false)), (i) => {
+        do_search(`${i.options.getInteger("max", false) ?? "1000"} ${i.options.getString("query", true)}`, i);
+    });
 
 collect_by_prefix("mc", async (message, content) => {
 

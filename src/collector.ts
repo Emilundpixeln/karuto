@@ -43,8 +43,18 @@ let message_delete_collectors: Array<MessageDeleteCollector> = [];
 let presence_collectors: Array<PresenceCollector> = [];
 let client_collectors: Array<ClientCollector> = [];
 
+let is_message = (x: any) : x is Discord.Message<boolean> => x.edit != undefined;
+
+export let as_message_or_throw = (msg: Promise<Discord.GuildCacheMessage<Discord.CacheType>>) => msg.then(v => {
+    if(is_message(v)) {
+        return v;
+    }
+    throw v;
+});
 
 export type MessageType = Discord.Message<boolean> | Discord.PartialMessage;
+export type Replyable =  Discord.Message<boolean> | Discord.PartialMessage | Discord.CommandInteraction<Discord.CacheType>;
+
 export let collect = (callback: (message: MessageType) => void, options: { filter?: (message: MessageType) => boolean, init?: () => void, trigger_on_message_update?: boolean } = undefined): void => {
     message_collectors.push({ filter: options?.filter, callback, init: options?.init, trigger_on_message_update: options?.trigger_on_message_update ?? false });
 }
@@ -198,6 +208,8 @@ export let get_all_messages_untill = async (channel: TextBasedChannel, should_st
         }
     }
 }
+
+export let snowflake_to_timestamp = (time: string) => Number((BigInt(time) >> BigInt(22)) + BigInt(1420070400000));
 
 export default {
     on_message, on_init, on_presence_update, on_message_delete, on_message_update, on_interaction, get_commands_json
