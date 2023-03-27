@@ -1,64 +1,54 @@
-import { Message, MessageEditOptions, MessagePayload, TextBasedChannel, MessageComponentInteraction, CacheType, CommandInteraction } from "discord.js"
-import { MessageType } from "./collector.js"
+import { Message, MessageEditOptions, MessagePayload, TextBasedChannel, MessageComponentInteraction, CacheType, CommandInteraction, InteractionReplyOptions } from "discord.js"
+import { as_message_or_throw, MessageType } from "./collector.js"
 
+type Content = string | (Omit<MessageEditOptions, "flags" | "embeds"> & Pick<InteractionReplyOptions, "embeds">) | MessagePayload;
 
 export class MessageHandler
 {
-    message: Promise<Message>;
-    interaction: MessageComponentInteraction<CacheType>;
-    interaction_command: CommandInteraction;
-    message_send_via_interaction: boolean;
+    message: Promise<Message> | undefined;
+    interaction: MessageComponentInteraction<CacheType> | undefined;
+    sender: (content: Content) => Promise<Message<boolean>>
 
-    constructor(interaction_command: CommandInteraction = undefined) {
+    private constructor(sender: (content: Content) => Promise<Message<boolean>>) {
         this.message = undefined;
         this.interaction = undefined;
-        this.interaction_command = interaction_command;
-        this.message_send_via_interaction = false;
+        this.sender = sender;
     }
 
-    send(channel: TextBasedChannel, content: string | Omit<MessageEditOptions, "flags"> | MessagePayload) {
-        return this.send_impl(content, () => channel.send(content));
+    static as_interaction_command_reply(interaction_command: CommandInteraction) {
+        // maybe need to edit through interaction this.interaction_command.editReply(content)
+        return new MessageHandler((content) => interaction_command.reply(content).then(_ => as_message_or_throw(interaction_command.fetchReply())))
     }
 
-    edit(content: string | Omit<MessageEditOptions, "flags"> | MessagePayload) {
-        return this.send_impl(content, () => {
-            console.error("MessageHandler edit, no Message was send!");
-            return undefined;
-        });
+    static as_channel_send(channel: TextBasedChannel) {
+        return new MessageHandler((content) => channel.send(content))
     }
 
-    
-    reply_to_given_interaction(content: string | Omit<MessageEditOptions, "flags"> | MessagePayload) {
-        return this.send_impl(content, () => {
-            console.error("MessageHandler reply_to_given_interaction, no interaction_command!");
-            return undefined;
-        });
+    static as_message_reply(message: MessageType) {
+        return new MessageHandler((content) => message.reply(content))
     }
 
-    reply(message: MessageType, content: string | Omit<MessageEditOptions, "flags"> | MessagePayload) {
-        return this.send_impl(content, () => message.reply(content));
+    send(content: Content) {
+        if(typeof content == "object" && "embeds" in content && content.embeds == null) {
+            content.embeds = undefined
+        }
+        if(this.message) {
+            try {
+                console.log(this.message, content)
+                this.message.then(m => m.edit(content)).then(_ => {
+                    this.interaction && !this.interaction.deferred && this.interaction.deferUpdate();
+                    this.interaction = undefined;
+                });
+            } catch (error) {
+                console.error(error);
+            }
+        } else {
+            this.message = this.sender(content);
+        }
+        return this.message;
     }
 
     defer_on_edit(interaction: MessageComponentInteraction<CacheType>) {
         this.interaction = interaction;
-    }
-
-    private send_impl(content: string | Omit<MessageEditOptions, "flags"> | MessagePayload, sender: () => Promise<Message<boolean>>) {
-        if(this.message) {
-            try {
-                this.message.then(m => this.interaction_command ? this.interaction_command.editReply(content) : m.edit(content)).then(_ => {
-                    this.interaction && !this.interaction.deferred && this.interaction.deferUpdate();
-                    this.interaction = undefined;
-                });
-            } catch (error) {}
-        } else {
-            if(this.interaction_command) {
-                this.message = this.interaction_command.reply(content).then(_ => this.interaction_command.fetchReply() as Promise<Message<boolean>>);
-                this.message_send_via_interaction = true;
-            }
-            else
-                this.message = sender();
-        }
-        return this.message;
     }
 }

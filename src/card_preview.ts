@@ -1,7 +1,7 @@
 import Discord from "discord.js"
 import fetch from "node-fetch"
 import { url_to_ident, klu_data } from "./shared/klu_data.js"
-import { collect, collect2, Deleter, hook_message_updates } from "./collector.js"
+import { collect, collect2, Deleter, hook_message_updates, MessageType } from "./collector.js"
 import { KARUTA_ID } from './constants.js'
 
 type Card = {
@@ -23,7 +23,7 @@ function guesses(c: Card): Array<string> {
     ]
 }
 
-async function getUrl(s: Card): Promise<string> {
+async function getUrl(s: Card): Promise<string | undefined> {
     let guesses_list = guesses(s);
     if(guesses_list.length == 1) return guesses_list[0];
     for(let guess of guesses_list) {
@@ -34,16 +34,16 @@ async function getUrl(s: Card): Promise<string> {
     return undefined;
 }
 type Track = {
-    channel: Discord.AnyChannel;
-    my_message: Promise<Discord.Message>;
+    channel: Discord.TextBasedChannel;
+    my_message: Promise<Discord.Message> | undefined;
     current_cards: Array<Card>;
-    deleter: Deleter;
+    deleter: Deleter | undefined;
 };
 
 let tracked_messages: Map<string, Track> = new Map();
 
 collect2(message => message.author.id == KARUTA_ID
-    && message.embeds.length >= 1 && message.embeds[0].description
+    && message.embeds.length >= 1 && message.embeds[0].description != undefined && message.embeds[0].title != undefined
     && (message.embeds[0].description.startsWith("Cards carried by") 
     || message.embeds[0].description.startsWith("Burn Cards")
     || message.embeds[0].title.startsWith("Character Results")), message => {
@@ -57,28 +57,31 @@ collect2(message => message.author.id == KARUTA_ID
             channel: message.channel,
             my_message: undefined,
             current_cards: [],
-            deleter: null,
+            deleter: undefined,
         });
-        tracked_messages.get(message.id).deleter = hook_message_updates(message, () => onEdit(tracked_messages.get(message.id), message), 4 * 60 * 1000);
+
+        // TODO why isn't this not set above
+        tracked_messages.get(message.id)!.deleter = hook_message_updates(message, () => onEdit(tracked_messages.get(message.id)!, message), 4 * 60 * 1000);
     });
 
     collecter.on("dispose", async (reac) => {
         if(reac.count != 0) return;
         let track = tracked_messages.get(message.id);
         if(!track) return;
-        track.deleter();
-        (await track.my_message).delete();
+        track.deleter?.();
+        (await track.my_message)?.delete();
         tracked_messages.delete(message.id);
     })
 
 });
 
-async function onEdit(track: Track, message: Discord.Message<boolean> | Discord.PartialMessage) {
+async function onEdit(track: Track, message: MessageType) {
     let text: Array<string>;
     let fix_ed = false;
+    if(message.embeds[0].description == undefined) return
     if(message.embeds[0].description.startsWith("Cards carried by") || message.embeds[0].description.startsWith("Burn Cards")) {
         text = message.embeds[0].description.split("\n").slice(2);
-    } else if(message.embeds[0].title.startsWith("Character Results")) {
+    } else if(message.embeds[0].title?.startsWith("Character Results")) {
         text = message.embeds[0].fields[0].value.split("\n");
         fix_ed = true;
     } else {
@@ -97,7 +100,7 @@ async function onEdit(track: Track, message: Discord.Message<boolean> | Discord.
             edition: fix_ed ? "1" : parts[parts.length - 3].replaceAll(/[^\d]/g, ""),
             series: parts[parts.length - 2].trim()
         };
-    });
+    }).filter(Boolean);
     track.current_cards = cards;
 
 
@@ -112,9 +115,9 @@ async function update_message(track: Track) {
             .setColor('#0099ff')
             .setDescription(`[◈${url_card.card.edition} ${url_card.card.series}\n${"\u2800".repeat(max_size)}](${url_card.url})`)
             .setTitle(`${url_card.card.name}`)
-            .setThumbnail(url_card.url));
+            .setThumbnail(url_card.url ?? ""));
 
-    track.my_message = track.my_message ? (await track.my_message).edit({ embeds }) : track.channel["send"]({ embeds });
+    track.my_message = track.my_message ? (await track.my_message).edit({ embeds }) : track.channel.send({ embeds });
 }
 
 

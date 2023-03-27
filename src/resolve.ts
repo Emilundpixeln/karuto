@@ -3,38 +3,20 @@ import fetch from "node-fetch-commonjs"
 import Discord, { CommandInteraction } from "discord.js"
 import { SlashCommandBuilder } from "@discordjs/builders"
 import { collect_by_prefix, register_command } from "./collector.js"
+import { rest_no_bot } from "./index.js"
+import { RoutesTypings, Routes } from "./discordjs_rest_typings.js"
+import { REST } from "@discordjs/rest"
+
 
 let token = JSON.parse(readFileSync("token.json", { encoding: "utf-8" })).token;
-
 let resolve = async (user_id: string, guild_id: string) => {
 
-    let res = await fetch(`https://discord.com/api/v9/guilds/${guild_id}/messages/search?author_id=${user_id}`, {
-        "headers": {
-            "accept": "*/*",
-            "accept-language": "de-DE,de;q=0.9,en-US;q=0.8,en;q=0.7",
-            "authorization": token,
-            "cache-control": "no-cache",
-            "pragma": "no-cache",
-            "sec-ch-ua": "\"Google Chrome\";v=\"105\", \"Not)A;Brand\";v=\"8\", \"Chromium\";v=\"105\"",
-            "sec-ch-ua-mobile": "?0",
-            "sec-ch-ua-platform": "\"Windows\"",
-            "sec-fetch-dest": "empty",
-            "sec-fetch-mode": "cors",
-            "sec-fetch-site": "same-origin",
-            "x-debug-options": "bugReporterEnabled",
-        },
-        "body": null,
-        "method": "GET"
+    let json = await rest_no_bot.get<"guildMessageSearch">(Routes.guildMessageSearch(guild_id), {
+        query: new URLSearchParams({
+            author_id: user_id
+        })
     });
 
-
-    let json = await res.json() as {
-        total_results: number,
-        messages: Array<[ {
-            id: string,
-            channel_id: string
-        }]>
-    };
     if(json.total_results == 0)
         return;
     console.log(json);
@@ -44,24 +26,20 @@ let resolve = async (user_id: string, guild_id: string) => {
 }
 
 let resolve_s = async (client: Discord.Client, guild_id: string) => {
+    let json_guild = await client.fetchGuildPreview(guild_id).catch(_ => null);
+    if(!json_guild) return undefined;
 
-    try {
-        let json_guild = await client.fetchGuildPreview(guild_id);
-    
-        let embed = new Discord.MessageEmbed().setTitle(json_guild.name).setThumbnail(`https://cdn.discordapp.com/icons/${guild_id}/${json_guild.icon}.webp?size=256`).setFields(
-            { name: "Members", value: `${json_guild.approximateMemberCount}`, inline: true },
-        );
-    
-        if(json_guild.description)
-            embed.setDescription(json_guild.description);
-        return { embeds: [ embed ] }
-    } catch (error) {
-        return;
-    }
+    let embed = new Discord.MessageEmbed().setTitle(json_guild.name).setThumbnail(`https://cdn.discordapp.com/icons/${guild_id}/${json_guild.icon}.webp?size=256`).setFields(
+        { name: "Members", value: `${json_guild.approximateMemberCount}`, inline: true },
+    );
 
+    if(json_guild.description)
+        embed.setDescription(json_guild.description);
+    return { embeds: [ embed ] }
+ 
 }
 
-collect_by_prefix("oresolve", async (message: Discord.Message<boolean> | Discord.PartialMessage, content: string) => {
+collect_by_prefix("oresolve", async (message, content) => {
     if(message.author.bot) return;
 
     let input = /(\d+)/g.exec(content.trim());
@@ -81,7 +59,7 @@ register_command(
                                     .setDescription("User id")
                                     .setRequired(true)),
     async (inter) => {
-        let input = /(\d+)/g.exec(inter.options.getString("id"));
+        let input = /(\d+)/g.exec(inter.options.getString("id", true));
         if(!input) return inter.reply("Not a user id");
 
         let resp = await resolve(input[1], "648031568756998155");
@@ -92,7 +70,7 @@ register_command(
     }
 );
 
-collect_by_prefix("oresolves", async (message: Discord.Message<boolean> | Discord.PartialMessage, content: string) => {
+collect_by_prefix("oresolves", async (message, content) => {
     if(message.author.bot) return;
 
     let input = /(\d+)/g.exec(content.trim());
@@ -113,7 +91,7 @@ register_command(
                                     .setDescription("Guild id")
                                     .setRequired(true)),
     async (inter) => {
-        let input = /(\d+)/g.exec(inter.options.getString("id"));
+        let input = /(\d+)/g.exec(inter.options.getString("id", true));
         if(!input) return  inter.reply("Not a guild id");
     
         let resp = await resolve_s(inter.client, input[1]);

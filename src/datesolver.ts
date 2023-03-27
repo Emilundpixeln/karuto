@@ -10,7 +10,7 @@ import { KARUTA_ID } from "./constants.js"
 const execFileP = promisify(execFile);
 const unlinkP = promisify(unlink);
 
-function downloadImage(url, filepath): Promise<void> {
+function downloadImage(url: string, filepath: string): Promise<void> {
     return new Promise((resolve, reject) => {
         client.get(url, (res) => {
             res.pipe(createWriteStream(filepath));
@@ -70,17 +70,23 @@ let to_emoji = (char: string) => {
     }
 }
 let run_solve = async (args: string[]) => {
-    let { stdout, stderr } = await execFileP("datesolver.exe", args);
+    let path = process.env.DATESOLVER_PATH;
+    if(!path)
+    {
+        console.error("Datesolver path not set!");
+        return undefined;
+    }
+    let { stdout, stderr } = await execFileP(path, args);
 
             
-    let lines = stdout.split("\r\n");
+    let lines = stdout.replaceAll("\r", "").split("\n");
     
     if(lines.length < 19 || stdout.includes("[error]"))
     {
         console.error(lines);
         return undefined;
     }
-    console.log("datesolver.exe", args);
+    console.log(path, args);
     let board_lines = lines.slice(1, 16);
     return {
         board_lines,
@@ -94,7 +100,7 @@ let run_solve = async (args: string[]) => {
     }
 }
 
-let solve = async (m: MessageType, author: string, url_or_key: string, get_ring: boolean, my_message: MessageHandler) => {
+let solve = async (author: string, url_or_key: string, get_ring: boolean, my_message: MessageHandler) => {
     let is_img = url_or_key.includes("https://dhp5ttvnehc80.cloudfront.net/");
     let img_path = undefined;
     try {
@@ -111,11 +117,10 @@ let solve = async (m: MessageType, author: string, url_or_key: string, get_ring:
             args.push("-key", url_or_key);
         }
         let vals = await run_solve(args);
-        if(!vals)
-        {
-            my_message.reply(m, "Something went wrong...");
-            return
+        if(vals == undefined) {
+            return my_message.send("Something went wrong...");
         }
+
 
         
         let board_has_ring = vals.board_lines.reduce((p, c) => p || c.includes("W"), false);
@@ -125,23 +130,29 @@ let solve = async (m: MessageType, author: string, url_or_key: string, get_ring:
         if(board_has_ring && !path_has_ring && get_ring) {
             let force_vals = await run_solve(["-force_ring", "-key", vals.exchange_key]);
 
-            if(force_vals.path.includes("W")) {
+            if(force_vals?.path.includes("W")) {
                 vals = force_vals;
+                if(vals == undefined) {
+                    return my_message.send("Something went wrong...");
+                }
                 date_fail = true;
                 board_has_ring = true;
                 path_has_ring = true;
+
             }
     
         }
 
-        
+  
         let text = `${vals.path.trim().split(" ")
-            .map((s) => s.startsWith("@") 
-                ? ((s[1] == "L") ? `**[Take Left:**${to_emoji(s[2])}**]**` : `**[Take Right:**${to_emoji(s[2])}**]**`) 
+            .map((s, i, array) => s.startsWith("@") ?
+                // Omit help if next is the same action
+                i + 1 < array.length && array[i + 1] == s[2] ? to_emoji(s[2]) 
+                : ((s[1] == "L") ? `**[Take Left:**${to_emoji(s[2])}**]**` : `**[Take Right:**${to_emoji(s[2])}**]**`) 
                 : to_emoji(s))
             .join(" ")} + ${(vals.ap % 1000)} AP ${vals.ap >= 1000 ? " + :ring:" : ""} ${date_fail ? " *Date will fail for ring*" : ""}`;
         let board_text = vals.board.map((line, y) => line.split("")
-        .map((c, x) => y == 14 && x == 5 ? to_emoji(vals.car.includes("left") ? "left" : "right"): to_emoji(c)).join(" ")).join("\n");
+        .map((c, x) => y == 14 && x == 5 ? to_emoji(vals!.car.includes("left") ? "left" : "right"): to_emoji(c)).join(" ")).join("\n");
         
         const row = new MessageActionRow();
         let target = "datesolve button"; //Math.random().toString().padEnd(19, "0").slice(2);
@@ -160,7 +171,7 @@ let solve = async (m: MessageType, author: string, url_or_key: string, get_ring:
                 .setStyle('SECONDARY')
             );
             
-        my_message.reply(m, {
+        my_message.send({
             embeds: [
                 new MessageEmbed().setTitle(`Date solution${path_has_ring || !get_ring ? (get_ring ? " with Ring" : " without Ring") : ""}`).setDescription(text),
                 new MessageEmbed().setTitle("Recognized board").setDescription(board_text)
@@ -168,20 +179,22 @@ let solve = async (m: MessageType, author: string, url_or_key: string, get_ring:
             components: path_has_ring || !get_ring ? [row] : []
         })
 
-        const collector = (await my_message.message).createMessageComponentCollector({ filter: (i) => i.customId == target && i.user.id == author || (i.deferUpdate(), false), time: 4 * 60 * 1000 });
+        const collector = (await my_message.message)?.createMessageComponentCollector({ filter: (i) => i.customId == target && i.user.id == author || (i.deferUpdate(), false), time: 4 * 60 * 1000 });
         
-        collector.once('collect', i => {
-            console.log(`solve with exchange key ${vals.exchange_key}`);
+        collector?.once('collect', i => {
+            console.log(`solve with exchange key ${vals!.exchange_key}`);
             my_message.defer_on_edit(i);
             collector.stop();
-            solve(m, author, vals.exchange_key, !get_ring, my_message);
+            solve(author, vals!.exchange_key, !get_ring, my_message);
         });
 
-        if(img_path != undefined)
+        if(img_path != undefined) {
+            console.log("unlink", img_path);
             unlinkP(img_path);
+        }
    
     } catch (error) {
-        my_message.reply(m, "Something went wrong...");
+        my_message.send("Something went wrong...");
         console.error(error);
         if(img_path != undefined && existsSync(img_path))
             unlinkP(img_path);
@@ -199,27 +212,27 @@ collect_by_prefix("odate", async (m, cont) => {
 
     if(!url)
         return;
-    solve(m, m.author.id, url, true, new MessageHandler());
+    solve(m.author.id, url, true, MessageHandler.as_message_reply(m));
 });
 
 register_command(new SlashCommand().setName("date").setDescription("solve a date"), (i) => {
 
-    let msg = get_most_recent_message(i.channel.messages, (message) => {
+    let msg = i.channel ? get_most_recent_message(i.channel.messages, (message) => {
         if(!(message.author.id == KARUTA_ID && message.embeds.length > 0
-        && message.embeds[0].title == "Date Minigame" )) return false;
+        && message.embeds[0].title == "Date Minigame" && message.embeds[0].description)) return false;
         let visitor = /<@(\d+)>/g.exec(message.embeds[0].description);
-        return visitor && visitor[1] == i.user.id;
-    });
-    if(!msg) i.reply("No recent date found");
+        return !!visitor && visitor[1] == i.user.id;
+    }) : undefined;
+    if(!msg || !msg?.embeds?.[0]?.image?.url) i.reply("No recent date found");
     else {
-        solve(msg, i.user.id, msg?.embeds?.[0]?.image?.url, true, new MessageHandler(i));
+        solve(i.user.id, msg.embeds[0].image.url, true, MessageHandler.as_interaction_command_reply(i));
     }
 });
 
-let whereami = (my_msg: MessageHandler, reply_to: MessageType, inp_time: number, messages_for_search: MessageManager) => {
-    let msg = get_most_recent_message(messages_for_search, (message) => message.author.id == messages_for_search.client.user.id && message.embeds.length > 0
+let whereami = (my_msg: MessageHandler, inp_time: number, messages_for_search: MessageManager) => {
+    let msg = get_most_recent_message(messages_for_search, (message) => message.author.id == messages_for_search.client.user?.id && message.embeds.length > 0 && !!message.embeds[0].title
      && ["Date solution", "Date solution with Ring", "Date solution without Ring"].includes(message.embeds[0].title));
-    if(!msg) my_msg.reply(reply_to, "No recent date solution found");
+    if(!msg || !msg.embeds[0].description) my_msg.send("No recent date solution found");
     else {
         let removes = 25 - Math.floor(inp_time / 4);
         let rest = msg.embeds[0].description;
@@ -236,14 +249,14 @@ let whereami = (my_msg: MessageHandler, reply_to: MessageType, inp_time: number,
             console.log("Error");
             return;
         }
-        my_msg.reply(reply_to, { embeds: [ new MessageEmbed().setTitle(`Date Solution with remaining time ${inp_time}`).setDescription(rest) ] });
+        my_msg.send({ embeds: [ new MessageEmbed().setTitle(`Date Solution with remaining time ${inp_time}`).setDescription(rest) ] });
     }
 }
 
 register_command(new SlashCommand().setName("whereami").setDescription("Find remaining steps in a date")
     .addIntegerOption(option => option.setName("time").setDescription("Remaining Time ⌛").setMinValue(0).setMaxValue(100).setRequired(true)), (i) => {
     
-    whereami(new MessageHandler(i), undefined, i.options.getInteger("time"), i.channel.messages);
+    i.channel && whereami(MessageHandler.as_interaction_command_reply(i), i.options.getInteger("time")!, i.channel.messages);
 });
 
 collect_by_prefix("owhereami", (user_message, cont) => {
@@ -253,7 +266,7 @@ collect_by_prefix("owhereami", (user_message, cont) => {
         user_message.reply("Enter the remaing time");
         return;
     }
-    whereami(new MessageHandler(), user_message, time, user_message.channel.messages);
+    whereami(MessageHandler.as_message_reply(user_message), time, user_message.channel.messages);
 });
 
 
@@ -264,7 +277,7 @@ collect(async (message) => {
     
     let url = message?.embeds?.[0]?.image?.url;
     if(url)
-        solve(message, (await message.fetchReference()).author.id, url, true, new MessageHandler());
+        solve((await message.fetchReference()).author.id, url, true, MessageHandler.as_message_reply(message));
 });
 
 collect_transition(async (message, old_message) => {
@@ -272,13 +285,13 @@ collect_transition(async (message, old_message) => {
     && message.embeds[0].title == "Date Minigame" )) return;
     if(message.channelId != "932714352589541376") return;
 
-    if(!(old_message.author.id == KARUTA_ID && old_message.embeds.length > 0
+    if(!(old_message.author?.id == KARUTA_ID && old_message.embeds.length > 0
     && old_message.embeds[0].title == "Visit Character")) return;
     if(old_message.channelId != "932714352589541376") return;
     let date_ask_regex = /You are about to spend `\d` Energy to ask \*\*.*\*\* out on a date.\nBased on your \*\*Affection Rating\*\*, there is a `.*` chance they will accept./;
-    if(!date_ask_regex.exec(old_message.embeds[0].description)) return;
+    if(!old_message.embeds[0].description || !date_ask_regex.exec(old_message.embeds[0].description)) return;
     
     let url = message?.embeds?.[0]?.image?.url;
     if(url)
-        solve(message, (await message.fetchReference()).author.id, url, true, new MessageHandler());
+        solve((await message.fetchReference()).author.id, url, true, MessageHandler.as_message_reply(message));
 })

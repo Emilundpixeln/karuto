@@ -1,11 +1,11 @@
-import { readFileSync, createWriteStream, createReadStream, readdirSync, ReadStream, WriteStream } from "fs"
-import Discord, { Collector, MessageEmbed } from "discord.js"
-import { execFile } from "child_process" 
-import { promisify } from "util" 
+import Discord, { MessageEmbed } from "discord.js"
+import { execFile } from "child_process"
+import { promisify } from "util"
 import { collect_by_prefix, Replyable, register_command, SlashCommand, as_message_or_throw } from "./collector.js"
+import { api } from "./client.js"
 
 const execFileP = promisify(execFile);
-  
+
 
 type Card = {
     print: number;
@@ -18,7 +18,7 @@ type Card = {
 };
 
 
-type PastMessage = { 
+type PastMessage = {
     msg: Discord.Message<boolean>,
     index: number,
     pages: Array<{
@@ -32,17 +32,17 @@ let past_messages: Array<PastMessage> = [];
 let join_max_size = (lines: Array<string>, length: number, seperator: string = "\n"): Array<string> => {
     let ret: Array<string> = [];
     let cur_text = "";
-    do {
-        let m = lines.shift();
+    while(lines.length > 0) {
+        let m = lines.shift()!;
         if(m.length + cur_text.length + seperator.length < length) {
             cur_text += seperator + m;
         } else {
             ret.push(cur_text);
             cur_text = m;
         }
-    } while(lines.length > 0);
+    };
     if(cur_text.length > 0)
-    ret.push(cur_text);
+        ret.push(cur_text);
     return ret;
 }
 
@@ -52,7 +52,7 @@ let join_max_size_2 = <T>(lines: Array<T>, to_string: (t: T) => string, length: 
     let cur_text = "";
     let cur_obj: Array<T> = [];
     while(lines.length > 0) {
-        let m = lines.shift();
+        let m = lines.shift()!;
         let str = to_string(m);
         if(str.length + cur_text.length + seperator.length < length) {
             cur_text += seperator + str;
@@ -61,15 +61,15 @@ let join_max_size_2 = <T>(lines: Array<T>, to_string: (t: T) => string, length: 
             ret.push({ str: cur_text, objects: cur_obj });
 
             cur_text = str;
-            cur_obj = [ m ];
+            cur_obj = [m];
         }
-    } 
+    }
     if(cur_text.length > 0)
         ret.push({ str: cur_text, objects: cur_obj });
     return ret;
 }
 
-let update_message = async (pm: PastMessage, inter: Discord.MessageComponentInteraction<Discord.CacheType> = undefined /* edit msg on interaction instead */) => {
+let update_message = async (pm: PastMessage, inter: Discord.MessageComponentInteraction<Discord.CacheType> | undefined = undefined /* edit msg on interaction instead */) => {
 
     const row = new Discord.MessageActionRow()
         .addComponents(
@@ -95,8 +95,8 @@ let update_message = async (pm: PastMessage, inter: Discord.MessageComponentInte
                 .setDisabled(pm.index == pm.pages.length - 1),
         );
 
-    let body = pm.pages.length == 0 ? { embeds: [new MessageEmbed().setColor(0x00FFFF).setTitle("Search matched 0 cards") ] } :{ embeds: pm.pages[pm.index].embeds, components: [ row ]};
-    if(inter){
+    let body = pm.pages.length == 0 ? { embeds: [new MessageEmbed().setColor(0x00FFFF).setTitle("Search matched 0 cards")] } : { embeds: pm.pages[pm.index].embeds, components: [row] };
+    if(inter) {
         inter.update(body);
         // Todo fix this. Need to set this here so we wont defer this later in index.ts
         inter.deferred = true;
@@ -116,81 +116,66 @@ let on_interaction = async (i: Discord.MessageComponentInteraction<Discord.Cache
         pm.index += 1;
         update_message(pm, i);
     } else if(i.customId == "last" && pm.index != pm.pages.length - 1) {
-        pm.index =  pm.pages.length - 1;
+        pm.index = pm.pages.length - 1;
         update_message(pm, i);
     }
 }
 
-let do_search = (query: string, reply_to: Replyable) => {
+let do_search = async (query: string, reply_to: Replyable) => {
     query = query.trim();
 
     // fix missing commas
     [...query.matchAll(/[^\s,]\s+[cseopiCSEOPI][=:<>]/g)].reverse().forEach(v => {
-        query = query.substr(0, v.index + 1) + "," + query.substr(v.index + 1);
+        if(!v.index) return
+        query = query.substring(0, v.index + 1) + "," + query.substring(v.index + 1);
     });
 
-    let my_message_p = as_message_or_throw(reply_to.reply({ embeds: [new MessageEmbed().setColor(0x2b05eb).setTitle("Searching ...")], fetchReply: true } ));
+    let my_message_p = as_message_or_throw(reply_to.reply({ embeds: [new MessageEmbed().setColor(0x2b05eb).setTitle("Searching ...")], fetchReply: true }));
     console.log(query);
     let begin = Date.now();
-    execFileP("Search.exe", query.split(" ")).then(async (value: { stdout: string, stderr: string }) => {
-        let my_message = await my_message_p;
-        
-        if(value.stderr.length > 0) {
-            console.log(`Error: ${value.stderr}`);
 
-            my_message.edit({ embeds: [new MessageEmbed().setColor(0x991128).setTitle(`Error: ${value.stderr}`)] });
+    let result = await api.search.query(query).catch(() => undefined);
+    let my_message = await my_message_p;
+
+    if(result == undefined) {
+        my_message.edit({ embeds: [new MessageEmbed().setColor(0x991128).setTitle(`Error: Endpoint unreachable`)] });
+    }
+    else if("error" in result) {
+        my_message.edit({ embeds: [new MessageEmbed().setColor(0x991128).setTitle(`Error: ${result.error}`)] });
+    }
+    else {
+        let { cards, total_cards, matches, matches_inacc } = result;
+        let time_taken = Date.now() - begin;
+
+        //
+        // console.log(cards);
+        if(past_messages.length >= 10) {
+            let destroy = past_messages.shift()!;
+            destroy.collector.stop();
         }
-        else {
-            console.log(value.stdout.slice(0, 1000));
-            let lines = value.stdout.trim().split("\n").map(s => s.replaceAll("\r", ""));
-        
-            let matches_inacc = lines[1].endsWith("+");
-            let matches = Number(matches_inacc ? lines[1].substr(0, lines[1].length - 1) : lines[1]);
-            let total_cards = Number(lines[0]);
-            let time_taken = Date.now() - begin;
 
-        //    console.log(lines);
-            const cards = lines.slice(2).map((line) => {
-                let parts = line.split("\t");
-
-                return {
-                    print: Number(parts[0]),
-                    wl: Number(parts[1]),
-                    card_id: parts[2],
-                    name: parts[3],
-                    series: parts[4],
-                    edition: Number(parts[5]),
-                    owner: parts[6].trimRight(),
-                };
-            });
-           // console.log(cards);
-            if(past_messages.length >= 10) {
-                let destroy = past_messages.shift();
-                destroy.collector.stop();
-            }
-
-            let paged = join_max_size_2(cards, (c: Card) => `\`${c.card_id}\` · \`#${c.print}\`  · \`◈${c.edition}\` · ${c.series} · ${c.name} · <@${c.owner}>`, 3000);
-            let collector = my_message.createMessageComponentCollector({ time: 10 * 60 * 1000 });
-            let pm = { msg: my_message, index: 0, collector, pages: paged.map((page, i) => ({ 
+        let paged = join_max_size_2(cards, c => `\`${c.card_id}\` · \`#${c.print}\`  · \`◈${c.edition}\` · ${c.series} · ${c.name} · <@${c.owner}>`, 3000);
+        let collector = my_message.createMessageComponentCollector({ time: 10 * 60 * 1000 });
+        let pm = {
+            msg: my_message, index: 0, collector, pages: paged.map((page, i) => ({
                 cards: page.objects,
-                embeds: [ new MessageEmbed({ description: page.str }).setColor(0x00FFFF)
+                embeds: [new MessageEmbed({ description: page.str }).setColor(0x00FFFF)
                     .setTitle(`Search matched ${matches}${matches_inacc ? " (or more)" : ""} card${matches == 1 ? "" : "s"}   Page ${i + 1}/${paged.length}`)
                     .setFooter({ text: `Searched ${total_cards} cards in ${time_taken}ms.` })
                 ],
-            }))}
-            past_messages.push(pm);
-     
-            collector.on("collect", i => on_interaction(i, pm));
-        
-            update_message(pm);
+            }))
         }
- 
-    });   
+        past_messages.push(pm);
+
+        collector.on("collect", i => on_interaction(i, pm));
+
+        update_message(pm);
+    }
 }
 
 collect_by_prefix("os", async (message, content) => {
-    if (message.author.bot) return;
-   do_search(content, message);
+    if(message.author.bot) return;
+    do_search(content, message);
 });
 
 register_command(new SlashCommand().setName("search").setDescription("Search for cards matching a query")
@@ -201,30 +186,30 @@ register_command(new SlashCommand().setName("search").setDescription("Search for
 
 collect_by_prefix("mc", async (message, content) => {
 
-    if (message.type !== 'REPLY')  return;
+    if(message.type !== 'REPLY') return;
 
     let template = "Hi is your % for sell?"
     let rest = content.trim();
     if(rest.length > 0 && rest.includes("%"))
         template = rest;
-    
+
     const msg1 = await message.fetchReference();
-    let past_msg = past_messages.find((msg) => msg.msg.id == message.reference.messageId);
-   // console.log(past_msg);
-   // console.log(msg1);
+    let past_msg = past_messages.find((msg) => msg.msg.id == message.reference?.messageId);
+    // console.log(past_msg);
+    // console.log(msg1);
     if(past_msg == undefined) return;
     let cards = past_msg.pages[past_msg.index].cards;
     let ids = join_max_size(cards.map((card) => card.owner).filter((v, i, a) => a.indexOf(v) === i), 3800, " ");
     let messages = cards.map((c) => {
         let card_msg = `\`${c.card_id}\` · \`#${c.print}\`  · \`◈${c.edition}\` · ${c.series} · ${c.name}`;
-        return `<@${c.owner}> ${template.replace("%", card_msg)}`; 
+        return `<@${c.owner}> ${template.replace("%", card_msg)}`;
     });
-  //  console.log(messages);
+    //  console.log(messages);
     let embeds = [
         ...ids.map((id) => new MessageEmbed({ description: id })),
         ...join_max_size(messages, 3000).map((str) => new MessageEmbed({ description: str })).slice(0, 2)
     ];
 
-  //  console.log(embeds);
+    //  console.log(embeds);
     message.reply({ embeds });
 });

@@ -7,5 +7,4 @@ let get_or_default = <T>(str: string, default_value: T): T => {
 }
 
 
-export let use_cli_backend = get_or_default("use_cli_backend", false);
-export let BOT_TOKEN = get_or_default("BOT_TOKEN", null) as string;
+export let BOT_TOKEN = get_or_default("BOT_TOKEN", "");

@@ -11,7 +11,7 @@ collect(async (msg) => {
 
     let ref = await msg.fetchReference();
 
-    if(ref.content.split(" ").slice(2).find((v) => v == "wl")) {
+    if(ref.content.split(" ").slice(2).find((v) => v == "wl") && !!msg.embeds[0].description) {
         let desc_lines = msg.embeds[0].description.replaceAll("~~", "").split("\n\n");
         let card_info_line = desc_lines[0].startsWith("Owned by <@")/*kci*/ ? 1 : 0;
         let desc = desc_lines[card_info_line].split("·");

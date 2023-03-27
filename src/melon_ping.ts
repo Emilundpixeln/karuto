@@ -8,7 +8,7 @@ collect((msg) => {
     if(msg.author.id != KARUTA_ID) return;
     if(msg.channelId != "932713994886721576") return;
     if(msg.content && (msg.content.endsWith("is dropping 3 cards!") || msg.content == "I'm dropping 3 cards since this server is currently active!")) {
-        let has_candy = msg.components.some((comp) => comp.components.some(c => ["🍫", "🍬"].includes((c as MessageButton).emoji.name)));
+        let has_candy = msg.components.some((comp) => comp.components.some(c => !!(c as MessageButton).emoji?.name && ["🍫", "🍬"].includes((c as MessageButton).emoji!.name!)));
 
         if(!has_candy) return;
         let collector = msg.channel.createMessageCollector();

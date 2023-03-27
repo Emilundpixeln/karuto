@@ -13,13 +13,13 @@ collect(async (m) => {
 
         m.react("🖼");
         m.react("💰");
-        let collector = m.createReactionCollector({ filter: (react, user) => react.emoji.name == "🖼" && user.id != m.client.user.id, time: 30 * 1000, max: 1, maxEmojis: 1});
+        let collector = m.createReactionCollector({ filter: (react, user) => react.emoji.name == "🖼" && user.id != m.client.user?.id, time: 30 * 1000, max: 1, maxEmojis: 1});
 
-        let msg = new MessageHandler();
+        let msg = MessageHandler.as_message_reply(m);
         collector.on("collect", (r, u) => {
             hook_message_updates(m, (_) => {
                 let image = m.embeds[0].image ?? m.embeds[0].thumbnail;
-                image && msg.reply(m, { embeds: [ new MessageEmbed()
+                image && msg.send({ embeds: [ new MessageEmbed()
                     .setDescription(`https://gliding.codes/karuta?url=${encodeURIComponent(image.url)}`).setTitle("Karuta Frame Previewer & Tester")]})
             })
         });

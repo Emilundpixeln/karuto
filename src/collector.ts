@@ -9,26 +9,26 @@ export let is_reply_to_command = async (m: MessageType, commands: string[]) => {
 
 type MessageCollector = 
 {
-    filter: (message: MessageType) => boolean,
+    filter?: (message: MessageType) => boolean,
     callback: (message: MessageType) => void,
-    init: () => void,
+    init?: () => void,
     trigger_on_message_update: boolean,
 }
 type MessageUpdateCollector = 
 {
-    filter: (message: MessageType, old_message: MessageType) => boolean,
-    callback: (message: MessageType, old_message: MessageType) => void,
-    init: () => void
+    filter?: (message: MessageType, old_message: PartialMessageType) => boolean,
+    callback: (message: MessageType, old_message: PartialMessageType) => void,
+    init?: () => void
 }
 type MessageDeleteCollector = 
 {
-    filter: (message: MessageType) => boolean,
-    callback: (message: MessageType) => void,
-    init: () => void
+    filter?: (message: PartialMessageType) => boolean,
+    callback: (message: PartialMessageType) => void,
+    init?: () => void
 }
 type PresenceCollector = 
 {
-    callback: (old_presence: Discord.Presence, new_presence: Discord.Presence) => void,
+    callback: (old_presence: Discord.Presence | null, new_presence: Discord.Presence) => void,
 }
 type ClientCollector = 
 {
@@ -52,14 +52,15 @@ export let as_message_or_throw = (msg: Promise<Discord.GuildCacheMessage<Discord
     throw v;
 });
 
-export type MessageType = Discord.Message<boolean> | Discord.PartialMessage;
-export type Replyable =  Discord.Message<boolean> | Discord.PartialMessage | Discord.CommandInteraction<Discord.CacheType>;
+export type MessageType = Omit<Discord.Message<boolean>, "_patch" | "partial" | "_cacheType">; //| Discord.PartialMessage;
+export type PartialMessageType = Discord.PartialMessage | Discord.Message<boolean>;
+export type Replyable = MessageType | PartialMessageType | Discord.CommandInteraction<Discord.CacheType>;
 
-export let collect = (callback: (message: MessageType) => void, options: { filter?: (message: MessageType) => boolean, init?: () => void, trigger_on_message_update?: boolean } = undefined): void => {
+export let collect = (callback: (message: MessageType) => void, options: { filter?: (message: MessageType) => boolean, init?: () => void, trigger_on_message_update?: boolean } | undefined = undefined): void => {
     message_collectors.push({ filter: options?.filter, callback, init: options?.init, trigger_on_message_update: options?.trigger_on_message_update ?? false });
 }
 
-export let collect_transition = (callback: (message: MessageType, old_message: MessageType) => void, options: { filter?: (message: MessageType, old_message: MessageType) => boolean, init?: () => void } = undefined): void => {
+export let collect_transition = (callback: (message: MessageType, old_message: PartialMessageType) => void, options: { filter?: (message: MessageType, old_message: PartialMessageType) => boolean, init?: () => void } | undefined = undefined): void => {
     message_update_collectors.push({ filter: options?.filter, callback, init: options?.init });
 }
 
@@ -77,11 +78,11 @@ export let hook_message_updates = (message: MessageType, callback: (message: Mes
 }
 
 let commands = [] as {
-    proto: Partial<SlashCommandBuilder>,
+    proto: Partial<SlashCommandBuilder> & Pick<SlashCommandBuilder, "toJSON">,
     callback: (interaction: CommandInteraction) => void
 }[];
 export let SlashCommand = SlashCommandBuilder;
-export let register_command = (command: Partial<SlashCommandBuilder>, callback: (interaction: CommandInteraction) => void) => {
+export let register_command = (command: Partial<SlashCommandBuilder> & Pick<SlashCommandBuilder, "toJSON">, callback: (interaction: CommandInteraction) => void) => {
     commands.push({ proto: command, callback });
 }
 
@@ -90,22 +91,22 @@ export let collect2 = (filter: (message: MessageType) => boolean, callback: (mes
 }
 
 
-export let collect_message_delete = (filter: (message: MessageType) => boolean, callback: (message: MessageType) => void, init: () => void = () => {}): void => {
+export let collect_message_delete = (filter: (message: PartialMessageType) => boolean, callback: (message: PartialMessageType) => void, init: () => void = () => {}): void => {
     message_delete_collectors.push({ filter, callback, init });
 }
 
 
 export let collect_by_prefix_and_filter = (prefix: string, additional_filter: (message: MessageType) => boolean, callback: (message: MessageType, content_after_prefix: string) => void, init: () => void = () => {}): void => {
-    collect2((m) => additional_filter(m) 
+    collect2((m) => m.content != null && additional_filter(m) 
         && m.content.startsWith(prefix) 
-        && (m.content.length == prefix.length || m.content[prefix.length].trim().length == 0), (m) => callback(m, m.content.substr(prefix.length)), init);
+        && (m.content.length == prefix.length || m.content[prefix.length].trim().length == 0), (m) => callback(m, m.content?.substring(prefix.length) ?? ""), init);
 }
 
 export let collect_by_prefix = (prefix: string, callback: (message: MessageType, content_after_prefix: string) => void, init: () => void = () => {}): void => {
-    collect_by_prefix_and_filter(prefix, (m) => true, (m) => callback(m, m.content.substr(prefix.length)), init);
+    collect_by_prefix_and_filter(prefix, (m) => true, (m) => callback(m, m.content?.substring(prefix.length) ?? ""), init);
 }
 
-export let collect_presence_updates = (callback: (old_presence: Discord.Presence, new_presence: Discord.Presence) => void) => {
+export let collect_presence_updates = (callback: (old_presence: Discord.Presence | null, new_presence: Discord.Presence) => void) => {
     presence_collectors.push({ callback });
 }
 
@@ -132,23 +133,32 @@ export let on_interaction = (interaction: Discord.Interaction<Discord.CacheType>
     }
 }
 
-export let on_message_update = (old_message: MessageType, message: MessageType): void => {
+export let on_message_update = async (old_message: PartialMessageType, message: PartialMessageType): Promise<void> => {
+    
 
-    message_collectors.map((v) => {
-        if(v.trigger_on_message_update && (!v.filter || v.filter(message))) v.callback(message);
-    });
-
+    const norefetch = message.type != null && message.system != null && message.pinned != null && message.tts != null && message.content != null && message.cleanContent != null && message.author != null;
+    let full_message = norefetch ? message : await message.fetch();
+    if(!norefetch) {
+        if(message.author?.id == message.client.user?.id)
+            console.log("Refetched my message", message.type, message.system, message.pinned, message.tts, message.content, message.cleanContent, message.author);
+        else
+            console.log("Refetched", message);
+    }
     message_update_collectors.map((v) => {
-        if(!v.filter || v.filter(message, old_message)) v.callback(message, old_message);
+        if(!v.filter || v.filter(full_message, old_message)) v.callback(full_message, old_message);
     });
+    message_collectors.map((v) => {
+        if(v.trigger_on_message_update && (!v.filter || v.filter(full_message))) v.callback(full_message);
+    });
+
 }
-export let on_message_delete = (message: MessageType): void => {
+export let on_message_delete = (message: PartialMessageType): void => {
     message_delete_collectors.map((v) => {
         if((!v.filter || v.filter(message))) v.callback(message);
     });
 }
 
-export let on_presence_update = (old_presence: Discord.Presence, new_presence: Discord.Presence) => {
+export let on_presence_update = (old_presence: Discord.Presence | null, new_presence: Discord.Presence) => {
     presence_collectors.map((v) => {
         v.callback(old_presence, new_presence);
     });
@@ -172,7 +182,7 @@ export let get_commands_json = () => {
 }
 
 export let get_most_recent_message = (messages: MessageManager, filter: (msg: MessageType) => boolean) => {
-    let max = undefined as MessageType;
+    let max = undefined as MessageType | undefined;
     messages.cache.map((message, key) => {
         if(max && max.createdTimestamp > message.createdTimestamp) return;
         if(!filter(message)) return;
@@ -181,8 +191,12 @@ export let get_most_recent_message = (messages: MessageManager, filter: (msg: Me
     return max;
 }
 
-export let get_all_messages_untill = async (channel: TextBasedChannel, should_stop: (msg: MessageType) => boolean) => {
-    let before = undefined as string;
+export let get_nth_most_recent_message = (messages: MessageManager, n: number) => {
+    return [...messages.cache.values()].sort((a, b) => a.createdTimestamp > b.createdTimestamp ? -1 : 1)?.[n]
+}
+
+export let get_all_messages_untill = async (channel: TextBasedChannel, should_stop: (msg: MessageType) => Promise<boolean> | boolean) => {
+    let before = undefined as string | undefined;
     let finished = false;
     let i = 0;
     while(!finished)
@@ -197,7 +211,7 @@ export let get_all_messages_untill = async (channel: TextBasedChannel, should_st
         for (const [id, msg] of msgs) {
             before = id;
           //  console.log(msg.content)
-            if(should_stop(msg)) {
+            if(await should_stop(msg)) {
                 finished = true;
                 break
             }

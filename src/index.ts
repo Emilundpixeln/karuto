@@ -3,7 +3,8 @@ import MessageCollector, { get_commands_json } from "./collector.js"
 import { BOT_TOKEN } from "./config.js";
 import { REST } from '@discordjs/rest';
 import { Routes } from 'discord-api-types/v9';
-
+import { typed_REST } from "./discordjs_rest_typings.js";
+import { readFileSync } from "fs"
 const client = new Discord.Client({intents: ["GUILDS", "GUILD_MESSAGES", "GUILD_MESSAGE_REACTIONS", "GUILD_PRESENCES"]});
 client.on("debug", async function(message) { 
    // console.log(message);
@@ -43,8 +44,9 @@ client.on("interactionCreate", async interaction => {
 
 
 client.login(BOT_TOKEN).then(_ => MessageCollector.on_init(client));
-
-
+export const rest = new REST({ version: '9' }).setToken(BOT_TOKEN) as typed_REST;
+export const rest_no_bot = new REST({ version: '9' }).setToken(JSON.parse(readFileSync("token.json", { encoding: "utf-8" })).token) as typed_REST;
+rest_no_bot.requestManager.options.authPrefix = "" as "Bearer"
 import "./resolve.js"
 import "./search.js"
 import "./debug.js"
@@ -55,7 +57,6 @@ import "./alias.js"
 import "./script.js"
 import "./kv_wl.js"
 import "./melon_ping.js"
-//import "./id.js"
 import "./frame.js"
 import "./datecd.js"
 import "./datesolver.js"
@@ -64,14 +65,10 @@ import "./card_preview.js"
 import "./util.js"
 import "./image.js"
 import "./admin.js"
-//import "./timezone.js"
+
 import "./ocr.js"
+import "./regex.js"
 
-
-
-
-
-const rest = new REST({ version: '9' }).setToken(BOT_TOKEN);
 rest.put(
     Routes.applicationCommands("959864966725390388"),
     { body: get_commands_json() },

@@ -1,7 +1,7 @@
 import { readFileSync } from "fs"
 
-export let klu_data = undefined as { [series: string]: { [character: string]: string }};
-export let wl_data = undefined as { [series: string]: { [character: string]: { wl: number, date: number }}};
+export let klu_data = {} as { [series: string]: { [character: string]: string }};
+export let wl_data = {} as { [series: string]: { [character: string]: { wl: number, date: number }}};
 export const wl_data_too_new = -1;
 
 export let url_to_ident = (url: string) => {
@@ -32,9 +32,13 @@ export let url_to_ed = (url: string) => {
     let versioned_url = "http://d2l56h9h5tj8ue.cloudfront.net/images/cards/versioned/";
     
     if(url.search(versioned_url) != -1) {
-        return parseInt(/-(\d+)-\d+\.jpg/g.exec(url)[1]);
+        let match = /-(\d+)-\d+\.jpg/g.exec(url);
+        if(!match) return undefined;
+        return parseInt(match[1]);
     } else {
-        return parseInt(/-(\d+)\.jpg/g.exec(url)[1]);
+        let match = /-(\d+)\.jpg/g.exec(url);
+        if(!match) return undefined;
+        return parseInt(match[1]);
     }
 }
 
@@ -46,7 +50,7 @@ export let ident_to_url = (ident: string, ed: number, versioned: boolean, versio
 }
 
 
-export let series_strs = undefined as string[];
+export let series_strs = [] as string[];
 export let character_strs = (series: string) => Object.keys(wl_data[series]) as Array<string>;
 
 export const wl_data_path = "wl_data.json";

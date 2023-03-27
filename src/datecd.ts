@@ -1,6 +1,6 @@
-import { collect, collect_by_prefix, MessageType } from './collector.js';
-import { promises, createWriteStream } from 'fs';
-import { Message, MessageEmbed } from "discord.js";
+import { collect, collect_by_prefix } from './collector.js';
+import { promises } from 'fs';
+import { MessageEmbed } from "discord.js";
 import { KARUTA_ID } from './constants.js'
 
 
@@ -31,7 +31,8 @@ promises.readFile("datecd.json", { encoding: "utf-8"}).then((data) => {
 
     let process = (description: string, message_id: string) => {
         let lines = description.split("\n");
-        let user = /<@(\d+)>/g.exec(lines[0])[1];
+        let user = /<@(\d+)>/g.exec(lines[0])?.[1];
+        if(!user) return;
         let card = lines[1].split("·")[1].trim();
 
        
@@ -51,7 +52,7 @@ promises.readFile("datecd.json", { encoding: "utf-8"}).then((data) => {
 
     collect((message) => {
         if(!(message.author.id == KARUTA_ID && message.embeds.length > 0
-        && message.embeds[0].title == "Date Minigame" )) return;
+        && message.embeds[0].title == "Date Minigame" && message.embeds[0].description)) return;
 
         process(message.embeds[0].description, message.id);
 

@@ -9,7 +9,6 @@ let get_messages = async (user_id: string, guild_id: string) => {
 
     while(times.length < 1000) {
 
-    
         let res = await fetch(`https://discord.com/api/v9/guilds/${guild_id}/messages/search?author_id=${user_id}&offset=${times.length + 20}`, {
             "headers": {
                 "accept": "*/*",
@@ -32,7 +31,7 @@ let get_messages = async (user_id: string, guild_id: string) => {
 
         let json = await res.json() as {
             total_results: number,
-            messages: Array<[ {
+            messages: Array<[{
                 id: string,
                 channel_id: string
             }]>
@@ -44,7 +43,7 @@ let get_messages = async (user_id: string, guild_id: string) => {
         let to_date = (time: string) => Number(((BigInt(time) >> BigInt(22)) + BigInt(1420070400000)) / BigInt(1000));
         times.push(...json.messages.map(val => {
             let hour = Math.floor(to_date(val[0].id) / 60 / 60) % 24;
-          
+
             return hour;
         }));
     }

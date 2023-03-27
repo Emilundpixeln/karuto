@@ -11,9 +11,9 @@ collect_by_prefix("ojson", async (m, cont) => {
         return;
     }
 
-    let channel = await m.client.channels.cache.get(match[2]);
+    let channel = m.client.channels.cache.get(match[2]);
 
-    if(!channel.isText()) return;
+    if(!channel || !channel.isText()) return;
     let msg = await (channel as TextBasedChannel).messages.fetch(match[3]);
 
     let str = JSON.stringify(msg, null, 2);

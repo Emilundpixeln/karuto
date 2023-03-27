@@ -18,7 +18,7 @@ collect_by_prefix_and_filter("ocrtoggle", (m) => is_admin(m.author.id), async (m
 })
 
 
-let do_ocr = async (url: string, created_timestamp: number | undefined, img_width: number | undefined, reply_to: MessageType) => {
+let do_ocr = async (url: string, created_timestamp: number, img_width: number | null, reply_to: MessageType) => {
 
 	console.log(`OCR start: ${Date.now() - created_timestamp}`);
 	//https://cdn.discordapp.com/attachments/932713994886721576/1034886603568594984/card.webp
@@ -30,7 +30,7 @@ let do_ocr = async (url: string, created_timestamp: number | undefined, img_widt
 	let recognize_result_p = recognize(url, false);
 
 	let expire_text = created_timestamp ? `Expires <t:${Math.floor(created_timestamp / 1000) + 60}:R>` : "?";
-	let wl_text = img_width != undefined ? "\u2800\n\u2800\n\u2800\n\u2800" + (img_width> 900 ? "\n\u2800" : "") : "";
+	let wl_text = img_width != null ? "\u2800\n\u2800\n\u2800\n\u2800" + (img_width> 900 ? "\n\u2800" : "") : "";
 
 	let do_initial_message = false;
 	let my_message = do_update && do_initial_message ? reply_to.reply(expire_text + "\n" + wl_text) : undefined;
@@ -43,11 +43,11 @@ let do_ocr = async (url: string, created_timestamp: number | undefined, img_widt
 		} catch(_) {}
 	}
 
-
+    let expired_timout = undefined as NodeJS.Timeout | undefined;
 	if(created_timestamp && created_timestamp + 60 * 1000 - Date.now() > 0) {
 		if(do_update)
 		{
-			setTimeout(async () => {
+			expired_timout = setTimeout(async () => {
 				expire_text = "Expired";
 				update_message();
 			}, 60 * 1000);
@@ -64,6 +64,11 @@ let do_ocr = async (url: string, created_timestamp: number | undefined, img_widt
 	let begin = Date.now();
 	let highest_wl = 0;
 	let recognize_result = await recognize_result_p;
+    console.log(recognize_result);
+    if(recognize_result == undefined) {
+        if (expired_timout) clearTimeout(expired_timout);
+        return;
+    }
 
 	wl_text = recognize_result != undefined ? 
 		recognize_result.map(v => {
@@ -142,7 +147,7 @@ collect_by_prefix("ocr", async (msg_a, cont) => {
 	}
 	else {
 
-		do_ocr(cont.trim(), msg_a.createdTimestamp, undefined, msg_a);
+		do_ocr(cont.trim(), msg_a.createdTimestamp, null, msg_a);
 	}
 
 
@@ -155,11 +160,8 @@ collect_by_prefix("odocr", async (msg, rest) => {
 	if(msg.author.id != "261587350121873408") return;
 
     let link = /discord\.com\/channels\/(\d+)\/(\d+)\/(\d+)/g.exec(rest);
-
-    if(link) {
-        
-        let channel = msg.client.channels.cache.get(link[2]);
-
+    let channel = link ? msg.client.channels.cache.get(link[2]) : undefined;
+    if(link && channel) {
         if(!channel.isText()) return msg.reply("Failed loading link!");
         let msg_ref = await (channel as TextBasedChannel).messages.fetch(link[3]);
         if(!(msg_ref.author.id == KARUTA_ID && msg_ref.content 
@@ -195,9 +197,9 @@ collect(async (msg) => {
 			"Brauchst nicht traurig sein 😪",
 		];
 		let text = replys[Math.floor(Math.random() * replys.length)];
-		if(m.author.id == "272002648641634304" && Math.random() < 0.4)
+		if(m?.author.id == "272002648641634304" && Math.random() < 0.4)
 			text = replys[0];
-		m ? m.reply(text) : msg.channel.send(`<@${/<@(\d+)>/.exec(msg.content)[1]}> ${text}`);
+		m ? m.reply(text) : msg.channel.send(`<@${/<@(\d+)>/.exec(msg.content)![1]}> ${text}`);
 		
 	}
 });

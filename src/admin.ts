@@ -4,60 +4,28 @@ import { reload_data, wl_data, wl_data_path, wl_data_too_new } from "./shared/kl
 import { KARUTA_ID, KARUTA_UPDATE_CHANNEL_ID } from "./constants.js";
 import { TextBasedChannel } from "discord.js";
 import { reload } from "./shared/ocr.js";
+import { api, api_unavailable_error_message, on_api_connect } from "./client.js";
 
 
 export let is_admin = (user_id: string) => user_id == "261587350121873408";
 
-let add_to_series_file = (to_add: string[]) => {
-    let file_name = "../karuta-indexer/data/series_data.json";
-    let serieses = JSON.parse(readFileSync(file_name, { encoding: "utf-8"})) as string[];
-
-    let real_added = to_add.filter((ser) => {
-        if(serieses.indexOf(ser) != -1) {
-            return false;
-        }
-        serieses.push(ser);
-        return true;
-    });
-    writeFileSync(file_name, JSON.stringify(serieses));
-    return real_added;
-}
-
-
-let add_to_chars_file = (to_add: { series: string, char: string }[]) => {
-    let file_name = "../karuta-indexer/data/wl_data.json";
-
-
-    let real_added = to_add.filter(({ series, char }) => {
-        if(!wl_data[series]) {
-            wl_data[series] = {}
-        }
-        if(wl_data[series][char]) return false; 
-        wl_data[series][char] = {
-            date: Date.now(),
-            wl: wl_data_too_new
-        }
-        return true;
-    });
-
-    return real_added;
-}
-
-collect_by_prefix_and_filter("oaddseries", (m) => is_admin(m.author.id), (mess, cont) => {
+collect_by_prefix_and_filter("oaddseries", (m) => is_admin(m.author.id), async (mess, cont) => {
     let to_add = cont.split(";").map(s => s.trim()).filter(s => s.length != 0);
     if(to_add.length == 0) {
         mess.reply("List series ;-seperated");
         return;
     }
-    let real_added = add_to_series_file(to_add);
-    if(real_added.length == 0)
+    let real_added = await api.admin.add_to_series_file.mutate({ to_add }).catch(_ => null);
+    if(real_added == null)
+        mess.reply(api_unavailable_error_message);
+    else if(real_added.length == 0)
         mess.reply("Nothing new to add.");
     else
         mess.reply(`Added ${real_added.map(s => `\`${s}\``).join(", ")}.${real_added.length != to_add.length ? " Rest was already added." : ""}`);
 })
 
 
-collect_by_prefix_and_filter("oreload", (m) => is_admin(m.author.id), (mess, cont) => {
+collect_by_prefix_and_filter("oreload", (m) => is_admin(m.author.id), (mess, _cont) => {
     reload_data();
     reload();
     mess.reply("Reloaded");
@@ -68,7 +36,7 @@ let parse_series_to_add = (text: string): string[] => {
     if(!added_series_text) return [];
 
     let inner = added_series_text[1];
-    return inner.split("\n").filter(s => s.length != 0).map(s => /\d+\. +(.*)/g.exec(s)[1]);
+    return inner.split("\n").filter(s => s.length != 0).map(s => /\d+\. +(.*)/g.exec(s)?.[1]).filter(Boolean);
 };
 
 let parse_chars_to_add = (text: string): { series: string, char: string }[] => {
@@ -88,38 +56,45 @@ let parse_chars_to_add = (text: string): { series: string, char: string }[] => {
             console.error(`parse_chars_to_add: Unbalanced brackets: "${s}"`);
             return undefined;
         }
-        let series = s.substr(series_opening_paranthesis + 1, series_closing_paranthesis - (series_opening_paranthesis + 1))
+        let series = s.substring(series_opening_paranthesis + 1, series_closing_paranthesis)
 
-        let match = /^\d+. (.*) $/g.exec(s.substr(0, series_opening_paranthesis));
+        let match = /^\d+. (.*) $/g.exec(s.substring(0, series_opening_paranthesis));
         if(!match) return undefined;
         return {
             series,
             char: match[1]
         };
-    }).filter(s => s);
+    }).filter(Boolean);
 };
 
+let process_message = async (text: string) => {
+    let to_add = text ? parse_series_to_add(text) : [];
+    let real_added = to_add.length > 0 ? await api.admin.add_to_series_file.mutate({ to_add }).catch(_ => null) : [];
+    if(real_added == null) return null;
 
-collect((mess) => {
+    let chars_to_add = text ? parse_chars_to_add(text) : [];
+    let added_chars = chars_to_add.length > 0 ? await api.admin.add_to_chars_file.mutate({ to_add: chars_to_add }).catch(_ => null) : [];
+    if(added_chars == null) return null;
+
+    return {
+        to_add_series_length: to_add.length,
+        added_series: real_added,
+        added_chars_length: added_chars.length
+    };
+}
+
+collect(async (mess) => {
     let text = mess.embeds[0].description;
+    if(!text) return;
 
-    let to_add = parse_series_to_add(text);
-    let real_added = add_to_series_file(to_add);
+    let res = await process_message(text);
+    if(res == null) return;
 
-
-    let chars_to_add = parse_chars_to_add(text);
-    let added_chars = 0;
-    if(chars_to_add.length > 0)
-    {
-        reload_data();
-        added_chars += add_to_chars_file(chars_to_add).length;
-        writeFileSync(wl_data_path, JSON.stringify(wl_data));
-    }
     let resp = ""
-    if(real_added.length != 0)
-        resp += `Added ${real_added.map(s => `\`${s}\``).join(", ")}.${real_added.length != to_add.length ? " Rest was already added." : ""}`;
-    if(added_chars != 0)
-        resp += `\nAdded ${added_chars} character${added_chars == 1 ? "" : "s"}` 
+    if(res.added_series.length != 0)
+        resp += `Added ${res.added_series.map(s => `\`${s}\``).join(", ")}.${res.added_series.length != res.to_add_series_length ? " Rest was already added." : ""}`;
+    if(res.added_chars_length != 0)
+        resp += `\nAdded ${res.added_chars_length} character${res.added_chars_length == 1 ? "" : "s"}` 
     if(resp.length > 0)
         mess.reply(resp);
 
@@ -130,45 +105,40 @@ collect((mess) => {
 });
 
 on_client_available(async (client) => {
-    let channel = await client.channels.fetch(KARUTA_UPDATE_CHANNEL_ID) as TextBasedChannel;
-    get_all_messages_untill(channel, (msg) => {
-        if(!(msg.author.id == "996856694611120230" 
-            && msg.channelId == KARUTA_UPDATE_CHANNEL_ID
-            && msg.embeds.length > 0))
-            return false;
-        let text = msg.embeds[0].description;
-   
 
-        let to_add = parse_series_to_add(text);
-        let real_added = add_to_series_file(to_add);
-        
-        let chars_to_add = parse_chars_to_add(text);
-        let added_chars = 0;
-        if(chars_to_add.length > 0)
-        {
-            reload_data();
-            let added = add_to_chars_file(chars_to_add);
-            console.log("Added characters:", added);
-            added_chars += added.length;
-            writeFileSync(wl_data_path, JSON.stringify(wl_data));
-        }
+    on_api_connect(async _ => {
+        let channel = await client.channels.fetch(KARUTA_UPDATE_CHANNEL_ID) as TextBasedChannel;
+        let i = 0;
+        get_all_messages_untill(channel, async msg => {
+            if(!(msg.author.id == "996856694611120230" 
+                && msg.channelId == KARUTA_UPDATE_CHANNEL_ID
+                && msg.embeds.length > 0))
+                return false;
+            let text = msg.embeds[0].description;
+            if(text == null) return true;
 
-        if(real_added.length == 0 && added_chars == 0)
-        {
-            // just stop on already added series
-            return to_add.length != 0; //!(to_add.length == 0 && chars_to_add.length == 0);
-        }
-        else
-        {
-            let resp = ""
-            if(real_added.length != 0)
-                resp += `Added ${real_added.map(s => `\`${s}\``).join(", ")}.${real_added.length != to_add.length ? " Rest was already added." : ""}`;
-            if(added_chars != 0)
-                resp += `\nAdded ${added_chars} character${added_chars == 1 ? "" : "s"}` 
-            
-            if(resp.length > 0)
-                msg.reply(resp);
-            return false;
-        }
+            let res = await process_message(text);
+            if(res == null) return true;
+
+            let { added_series, added_chars_length, to_add_series_length } = res;
+    
+            if(added_series.length == 0 && added_chars_length == 0)
+            {
+                // just stop on already added series
+                return to_add_series_length != 0 && i++ > 10; //!(to_add.length == 0 && chars_to_add.length == 0);
+            }
+            else
+            {
+                let resp = ""
+                if(added_series.length != 0)
+                    resp += `Added ${added_series.map(s => `\`${s}\``).join(", ")}.${added_series.length != to_add_series_length ? " Rest was already added." : ""}`;
+                if(added_chars_length != 0)
+                    resp += `\nAdded ${added_chars_length} character${added_chars_length == 1 ? "" : "s"}` 
+                
+                if(resp.length > 0)
+                    msg.reply(resp);
+                return false;
+            }
+        });
     });
 });
