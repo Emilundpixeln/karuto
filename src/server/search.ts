@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { Trpc } from "./index.js";
-import { execFile } from "child_process" 
-import { promisify } from "util" 
+import { execFile } from "child_process"
+import { promisify } from "util"
 
 const execFileP = promisify(execFile);
 
@@ -11,7 +11,7 @@ export const search = (t: Trpc) => t.procedure
         let query = req.input;
         console.log(`search: ${query}`);
         let { stdout, stderr } = await execFileP("Search.exe", query.split(" "));
-        
+
         if(stderr.length > 0) {
             console.log(`Error: ${stderr}`);
 
@@ -21,8 +21,8 @@ export const search = (t: Trpc) => t.procedure
         }
         else {
             let lines = stdout.trim().split("\n").map(s => s.replaceAll("\r", "")).filter(l => !l.startsWith("["));
-      
-        
+
+
             let matches_inacc = lines[1].endsWith("+");
             let matches = Number(matches_inacc ? lines[1].substring(0, lines[1].length - 1) : lines[1]);
             let total_cards = Number(lines[0]);
@@ -39,9 +39,9 @@ export const search = (t: Trpc) => t.procedure
                     edition: Number(parts[5]),
                     owner: parts[6].trimEnd(),
                 };
-          
+
             });
-         
+
             console.log(cards.slice(0, 10));
             return {
                 cards,
@@ -54,4 +54,3 @@ export const search = (t: Trpc) => t.procedure
 
 
 
-    

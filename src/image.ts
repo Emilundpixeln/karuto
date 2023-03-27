@@ -25,7 +25,7 @@ let spawnP = (cmd: string, args: string[]) => {
             let stdout_s = stdout.join('').trim()
             let stderr_s = stderr.join('').trim()
 
-            if (code === 0) {
+            if(code === 0) {
                 return resolve({ stdout: stdout_s, stderr: stderr_s })
             }
             return reject()
@@ -36,10 +36,10 @@ let spawnP = (cmd: string, args: string[]) => {
 let process_yt_url = async (client: Client, url: string) => {
     let result = null as string | null
     let full_url = /youtube\.com\/(?:watch\?v=)|(?:shorts\/)([a-zA-Z0-9-_]+)/g.exec(url)
-    if (full_url) result = full_url[1]
+    if(full_url) result = full_url[1]
     let short_url = /youtu\.be\/([a-zA-Z0-9-_])/g.exec(url)
-    if (short_url) result = short_url[1]
-    if (!result) return null;
+    if(short_url) result = short_url[1]
+    if(!result) return null;
 
     let thumbnail = `Thumbnail:\nhttps://i.ytimg.com/vi/${result}/hqdefault.jpg`;
     let api_result = await api.youtube_get_first_frame.query({ yt_id: result }).catch(_ => null);
@@ -57,11 +57,11 @@ let process_pinterest_url = async (client: Client, url: string) => {
     let image_regex = /<link rel="preload" fetchpriority="high" nonce="[0-9a-f]+" href="https:\/\/i\.pinimg\.com\/[^/]+\/([0-9a-f]+\/[0-9a-f]+\/[0-9a-f]+\/[0-9a-f]+\.[^"]+)" as="image"\/>/g;
 
     let url_match = url_regex.exec(url)
-    if (!url_match) return null;
+    if(!url_match) return null;
     let pin_url = `https://www.pinterest.com/pin/${url_match[1]}/`;
     let html = await (await fetch(pin_url)).text();
     let image_match = image_regex.exec(html)
-    if (!image_match) return null;
+    if(!image_match) return null;
 
     return `https://i.pinimg.com/originals/${image_match[1]}`;
 }
@@ -72,11 +72,11 @@ let process_opgg_url = async (client: Client, url: string) => {
     let image_regex = /<img src=\"(https:\/\/opgg-static\.akamaized\.net\/images\/profile_icons\/[^\"]+)\" alt=\"profile image\"\/>/g;
 
     let url_match = url_regex.exec(url)
-    if (!url_match) return null;
+    if(!url_match) return null;
     let pin_url = `https://www.op.gg/summoners/${url_match[1]}`;
     let html = await (await fetch(pin_url)).text();
     let image_match = image_regex.exec(html)
-    if (!image_match) return null;
+    if(!image_match) return null;
 
     return image_match[1]
 }
@@ -85,13 +85,13 @@ let process_ugg_url = async (client: Client, url: string) => {
     let image_regex = /<img class=\"profile-icon-image\" src=\"(https:\/\/static\.bigbrain\.gg\/assets\/[^\"]+)\"\/>/g;
 
     let url_match = url_regex.exec(url)
-    if (!url_match) return null;
+    if(!url_match) return null;
     let pin_url = `https://u.gg/lol/profile/${url_match[1]}/overview`;
     let html = await (await fetch(pin_url)).text();
 
 
     let image_match = image_regex.exec(html)
-    if (!image_match) return null;
+    if(!image_match) return null;
 
     return image_match[1]
 }
@@ -100,10 +100,10 @@ let process_discord_invite = async (client: Client, url: string) => {
     let url_regex = /(?:^|\.|\/\/)discord\.(?:gg\/([^/]+))|(?:com\/invite\/([^/]+))/g;
 
     let url_match = url_regex.exec(url)
-    if (!url_match) return null;
+    if(!url_match) return null;
     let pin_url = `https://discord.com/api/v9/invites/${url_match[1] ?? url_match[2]}`;
     let responce = await fetch(pin_url);
-    if (responce.status != 200) return null;
+    if(responce.status != 200) return null;
     let json = await responce.json() as {
         guild: {
             id: string,
@@ -126,10 +126,10 @@ let process_user_id = async (client: Client, url: string) => {
 
     let user_id = /^(\d{14,})$/g.exec(url)
 
-    if (!user_id) return null;
-  
+    if(!user_id) return null;
+
     let user = await client.users.fetch(user_id[1]).catch(() => null);
-    if (!user) return null;
+    if(!user) return null;
     return await process_user(user);
 }
 
@@ -148,18 +148,18 @@ let process_user = async (user: User) => {
     // use webp if it's not a gif
     await Promise.all([
         banner && url_is_ok(banner).then(ok => !ok && (banner = user.bannerURL({
-                format: "webp",
-                size: 4096
-            }))
+            format: "webp",
+            size: 4096
+        }))
         ),
         avatar && url_is_ok(avatar).then(ok => !ok && (avatar = user.avatarURL({
             format: "webp",
-                size: 4096
-            }))
+            size: 4096
+        }))
         )
     ]);
 
-   
+
     return `Avatar: ${avatar}${or_empty("\nBanner: ", banner)}`;
 }
 
@@ -171,11 +171,11 @@ register_command(new SlashCommand()
     .setDescription("Get images from a thumbnail or profile"), async i => {
         let url = i.options.getString("url");
         let user = i.options.getUser("user")
-        if (!url && !user) {
+        if(!url && !user) {
             return i.reply("Provide a url or a user!");
         }
-        if (!!url) {
-            
+        if(!!url) {
+
 
             const handler = [
                 process_yt_url,
@@ -200,7 +200,7 @@ register_command(new SlashCommand()
 
             const results = (await Promise.all(promises)).filter(Boolean);
             console.log("results", results)
-            if (results.length > 0) msg.send({
+            if(results.length > 0) msg.send({
                 content: results.map(v => v.text).join("\n"),
                 files: results.map(v => v.attachment).filter(Boolean).map(v => ({
                     attachment: v,
@@ -208,14 +208,14 @@ register_command(new SlashCommand()
                 }))
             });
             else msg.send(`Could not find anything for ${url}.`);
-         
+
         }
 
-        if (user) {
+        if(user) {
             let res = await process_user(user);
             i.reply(res);
         }
-});
+    });
 
 
 
@@ -224,8 +224,8 @@ let do_ris = async (m: MessageHandler, url: string) => {
     let res = await fetch("https://lens.google.com/uploadbyurl?" + new URLSearchParams({
         url
     })).catch(_ => null);
-    
-    if(!res) 
+
+    if(!res)
         return m.send("Something went wrong. (Post failed)");
 
     m.send(res.url);

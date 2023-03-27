@@ -14,8 +14,8 @@ collect((msg) => {
         let collector = msg.channel.createMessageCollector();
 
         let other = false;
-        collector.on("collect", async (message)  => {
-            if(message.author.id == KARUTA_ID && /<@\d+>, you snatched/g.exec(message.content)) 
+        collector.on("collect", async (message) => {
+            if(message.author.id == KARUTA_ID && /<@\d+>, you snatched/g.exec(message.content))
                 other = true;
         });
         setTimeout(() => {

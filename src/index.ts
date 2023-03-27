@@ -5,24 +5,24 @@ import { REST } from '@discordjs/rest';
 import { Routes } from 'discord-api-types/v9';
 import { typed_REST } from "./discordjs_rest_typings.js";
 import { readFileSync } from "fs"
-const client = new Discord.Client({intents: ["GUILDS", "GUILD_MESSAGES", "GUILD_MESSAGE_REACTIONS", "GUILD_PRESENCES"]});
-client.on("debug", async function(message) { 
-   // console.log(message);
+const client = new Discord.Client({ intents: ["GUILDS", "GUILD_MESSAGES", "GUILD_MESSAGE_REACTIONS", "GUILD_PRESENCES"] });
+client.on("debug", async function (message) {
+    // console.log(message);
 
-}); 
-client.on("messageCreate", async function(message) { 
+});
+client.on("messageCreate", async function (message) {
     MessageCollector.on_message(message);
-}); 
+});
 
-client.on("messageUpdate", async function(oldMessage, message) { 
+client.on("messageUpdate", async function (oldMessage, message) {
     MessageCollector.on_message_update(oldMessage, message);
-});  
+});
 
-client.on("presenceUpdate", async function(oldPresence, newPresence) { 
+client.on("presenceUpdate", async function (oldPresence, newPresence) {
     MessageCollector.on_presence_update(oldPresence, newPresence);
 });
 
-client.on("messageDelete", function(message){
+client.on("messageDelete", function (message) {
     MessageCollector.on_message_delete(message);
 });
 

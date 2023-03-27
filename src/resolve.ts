@@ -35,8 +35,8 @@ let resolve_s = async (client: Discord.Client, guild_id: string) => {
 
     if(json_guild.description)
         embed.setDescription(json_guild.description);
-    return { embeds: [ embed ] }
- 
+    return { embeds: [embed] }
+
 }
 
 collect_by_prefix("oresolve", async (message, content) => {
@@ -56,8 +56,8 @@ register_command(
         .setName("resolve")
         .setDescription("Find User")
         .addStringOption(option => option.setName("id")
-                                    .setDescription("User id")
-                                    .setRequired(true)),
+            .setDescription("User id")
+            .setRequired(true)),
     async (inter) => {
         let input = /(\d+)/g.exec(inter.options.getString("id", true));
         if(!input) return inter.reply("Not a user id");
@@ -65,7 +65,7 @@ register_command(
         let resp = await resolve(input[1], "648031568756998155");
         if(resp)
             inter.reply(resp);
-        else 
+        else
             inter.reply("Didn't find user");
     }
 );
@@ -88,12 +88,12 @@ register_command(
         .setName("resolve_server")
         .setDescription("Find Server")
         .addStringOption(option => option.setName("id")
-                                    .setDescription("Guild id")
-                                    .setRequired(true)),
+            .setDescription("Guild id")
+            .setRequired(true)),
     async (inter) => {
         let input = /(\d+)/g.exec(inter.options.getString("id", true));
-        if(!input) return  inter.reply("Not a guild id");
-    
+        if(!input) return inter.reply("Not a guild id");
+
         let resp = await resolve_s(inter.client, input[1]);
         if(resp)
             inter.reply(resp);

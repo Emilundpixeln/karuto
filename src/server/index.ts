@@ -1,7 +1,7 @@
 import { inferAsyncReturnType, initTRPC } from '@trpc/server';
 import * as trpcExpress from '@trpc/server/adapters/express';
 import express from 'express'
-import { search } from "./search.js" 
+import { search } from "./search.js"
 import { youtube_get_first_frame } from './image.js';
 import { adminRouter } from './admin.js';
 import { spot_sync } from './spot_sync.js';
@@ -9,7 +9,7 @@ import { spot_sync } from './spot_sync.js';
 const createContext = ({
     req,
     res,
-  }: trpcExpress.CreateExpressContextOptions) => ({}); // no context
+}: trpcExpress.CreateExpressContextOptions) => ({}); // no context
 type Context = inferAsyncReturnType<typeof createContext>;
 const trpc = initTRPC.context<Context>().create();
 export type Trpc = typeof trpc;

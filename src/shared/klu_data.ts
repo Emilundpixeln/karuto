@@ -1,7 +1,7 @@
 import { readFileSync } from "fs"
 
-export let klu_data = {} as { [series: string]: { [character: string]: string }};
-export let wl_data = {} as { [series: string]: { [character: string]: { wl: number, date: number }}};
+export let klu_data = {} as { [series: string]: { [character: string]: string } };
+export let wl_data = {} as { [series: string]: { [character: string]: { wl: number, date: number } } };
 export const wl_data_too_new = -1;
 
 export let url_to_ident = (url: string) => {
@@ -12,7 +12,7 @@ export let url_to_ident = (url: string) => {
 
     let versioned_url = "http://d2l56h9h5tj8ue.cloudfront.net/images/cards/versioned/";
     let unversioned_url = "http://d2l56h9h5tj8ue.cloudfront.net/images/cards/";
-    
+
     if(url.search(versioned_url) != -1) {
         let end = url.search(/-\d+-\d+\.jpg/g);
         let start = versioned_url.length;
@@ -23,14 +23,14 @@ export let url_to_ident = (url: string) => {
         let end = url.search(/-\d+\.jpg/g);
         let start = unversioned_url.length
 
-    
+
         return url.slice(start, end);
     }
 }
- 
+
 export let url_to_ed = (url: string) => {
     let versioned_url = "http://d2l56h9h5tj8ue.cloudfront.net/images/cards/versioned/";
-    
+
     if(url.search(versioned_url) != -1) {
         let match = /-(\d+)-\d+\.jpg/g.exec(url);
         if(!match) return undefined;

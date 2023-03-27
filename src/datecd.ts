@@ -22,7 +22,7 @@ let clear_store = () => {
 
 
 
-promises.readFile("datecd.json", { encoding: "utf-8"}).then((data) => {
+promises.readFile("datecd.json", { encoding: "utf-8" }).then((data) => {
 
     store = JSON.parse(data);
     if(!store.users) store.users = {};
@@ -35,7 +35,7 @@ promises.readFile("datecd.json", { encoding: "utf-8"}).then((data) => {
         if(!user) return;
         let card = lines[1].split("·")[1].trim();
 
-       
+
         if(!store.users[user]) store.users[user] = {};
         if(Date.now() - store.users[user][card] < 1000 * 60 * 60 * 4)
             return;
@@ -52,7 +52,7 @@ promises.readFile("datecd.json", { encoding: "utf-8"}).then((data) => {
 
     collect((message) => {
         if(!(message.author.id == KARUTA_ID && message.embeds.length > 0
-        && message.embeds[0].title == "Date Minigame" && message.embeds[0].description)) return;
+            && message.embeds[0].title == "Date Minigame" && message.embeds[0].description)) return;
 
         process(message.embeds[0].description, message.id);
 
@@ -77,7 +77,7 @@ collect_by_prefix("odatecd", (message, cont) => {
     if(text.length == 0) {
         message.reply("No Characters on Cooldown");
     } else {
-        message.reply({ embeds: [ new MessageEmbed().setTitle("Date Cooldown").setDescription(text.join("\n")).setColor("FUCHSIA")]})
+        message.reply({ embeds: [new MessageEmbed().setTitle("Date Cooldown").setDescription(text.join("\n")).setColor("FUCHSIA")] })
     }
 
 });

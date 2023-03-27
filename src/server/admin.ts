@@ -11,10 +11,10 @@ export const adminRouter = (t: Trpc) => t.router({
         }))
         .mutation(async req => {
             let { to_add } = req.input;
-            
+
             let file_name = "../karuta-indexer/data/series_data.json";
-            let serieses = JSON.parse(await readFile(file_name, { encoding: "utf-8"})) as string[];
-        
+            let serieses = JSON.parse(await readFile(file_name, { encoding: "utf-8" })) as string[];
+
             let real_added = to_add.filter(ser => {
                 if(serieses.indexOf(ser) != -1) {
                     return false;
@@ -34,12 +34,12 @@ export const adminRouter = (t: Trpc) => t.router({
         }))
         .mutation(async req => {
             let { to_add } = req.input;
-            let wl_data = JSON.parse(await readFile(wl_data_path, { encoding: "utf-8" })) as { [series: string]: { [character: string]: { wl: number, date: number }}};
+            let wl_data = JSON.parse(await readFile(wl_data_path, { encoding: "utf-8" })) as { [series: string]: { [character: string]: { wl: number, date: number } } };
             let real_added = to_add.filter(({ series, char }) => {
                 if(!wl_data[series]) {
                     wl_data[series] = {}
                 }
-                if(wl_data[series][char]) return false; 
+                if(wl_data[series][char]) return false;
                 wl_data[series][char] = {
                     date: Date.now(),
                     wl: wl_data_too_new

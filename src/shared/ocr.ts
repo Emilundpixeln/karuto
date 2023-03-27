@@ -1,11 +1,11 @@
-import { spawn, ChildProcessWithoutNullStreams } from "child_process" 
+import { spawn, ChildProcessWithoutNullStreams } from "child_process"
 
-import { existsSync} from "fs"
-
-
+import { existsSync } from "fs"
 
 
-export type OCR_Data = {series: string, char: string, raw_s: string, raw_c: string, confidence: number, wl: number, date: number };
+
+
+export type OCR_Data = { series: string, char: string, raw_s: string, raw_c: string, confidence: number, wl: number, date: number };
 
 let cur_resolve = undefined as undefined | ((value: [OCR_Data[] | undefined, string]) => void);
 let cur_promise = undefined as undefined | Promise<OCR_Data[] | undefined>;
@@ -27,7 +27,7 @@ export let reload = async () => {
         return;
     }
     console.log("Ocr available");
-    child = spawn(path, [ "-keepalive"]);
+    child = spawn(path, ["-keepalive"]);
     child.stderr.on("data", (data: Buffer) => {
         let out = data.toString("utf-8");
         console.log("stderr\n", out);
@@ -40,7 +40,7 @@ export let reload = async () => {
             return;
         }
         // console.log("buff have EOF!", "Buf ---\n", buff, "\n---");
-    
+
         let res = current_stdout.split("\n").filter(s => s.length > 0 && s[0] != "[" && s != "EOF").slice(1).map(line => {
             let vals = line.split("\t");
             if(vals.length < 7) {
@@ -57,21 +57,17 @@ export let reload = async () => {
                 raw_s: vals[6],
             }
         });
-      //  console.log(res);
-        if(!cur_resolve) 
-        {
+        //  console.log(res);
+        if(!cur_resolve) {
             console.error("cur_resolve undefined. Tried to resolve with", res);
         }
-        else
-        {
-             console.log("Resolving with", res, "Buf ---\n", current_stdout, "\n---");
+        else {
+            console.log("Resolving with", res, "Buf ---\n", current_stdout, "\n---");
             // if there are any line with errors just return undefined
-            if(res.every(Boolean) && res.length >= 3 && res.length <= 4) 
-            {
+            if(res.every(Boolean) && res.length >= 3 && res.length <= 4) {
                 // see every check above
                 cur_resolve([res as NonNullable<typeof res[number]>[], current_stdout]);
-            } else 
-            {
+            } else {
                 cur_resolve([undefined, current_stdout]);
             }
             cur_resolve = undefined;
@@ -86,7 +82,7 @@ export let recognize = async (url: string, log_file: boolean) => {
     if(cur_promise) await cur_promise;
     if(!child) return undefined;
     // return undefined on whitespace input
-    if(url == "" || /^\s+$/.exec(url)) return undefined; 
+    if(url == "" || /^\s+$/.exec(url)) return undefined;
 
     cur_promise = new Promise<OCR_Data[] | undefined>(resolve => {
         let resolved = false;
@@ -99,8 +95,7 @@ export let recognize = async (url: string, log_file: boolean) => {
             cur_resolve = undefined;
             resolve(undefined);
         }, 5000);
-        cur_resolve = (data_stdout) => 
-        {
+        cur_resolve = (data_stdout) => {
             clearTimeout(timeout);
             resolve(data_stdout[0]);
             if(log_file) {
@@ -113,7 +108,7 @@ export let recognize = async (url: string, log_file: boolean) => {
     child.stdin.cork();
     child.stdin.write(`${url}\n`);
     child.stdin.uncork();
-    
+
     cur_begin = Date.now();
     return cur_promise;
 };

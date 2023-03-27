@@ -13,13 +13,13 @@ export type RoutesTypings = {
     },
     guildMessageSearch: {
         total_results: number,
-        messages: [ {
+        messages: [{
             id: string,
             channel_id: string
-        } ][]
+        }][]
     }
 
-    
+
 };
 
 export const Routes = {
@@ -34,7 +34,7 @@ export type typed_REST = {
     readonly requestManager: RequestManager;
 
     getAgent(): Dispatcher | null;
- 
+
     setAgent(agent: Dispatcher): typed_REST;
 
     setToken(token: string): typed_REST;

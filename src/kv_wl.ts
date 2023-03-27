@@ -6,7 +6,7 @@ collect(async (msg) => {
     if(!(
         msg.author.id == KARUTA_ID &&
         msg.embeds.length == 1 &&
-        msg.embeds[0].title == "Card Details" 
+        msg.embeds[0].title == "Card Details"
     )) return;
 
     let ref = await msg.fetchReference();
@@ -17,7 +17,7 @@ collect(async (msg) => {
         let desc = desc_lines[card_info_line].split("·");
         let series = desc[desc.length - 2].trim();
         let char_bold = desc[desc.length - 1].trim();
-  
+
         let alias = /\*\(alias of \*\*(.*)\*\*\)\*/g.exec(char_bold);
         let char = alias ? alias[1] : char_bold.substr(2, char_bold.length - 4);
         let wl_dat = wl_data?.[series]?.[char];

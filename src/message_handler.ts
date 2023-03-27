@@ -3,8 +3,7 @@ import { as_message_or_throw, MessageType } from "./collector.js"
 
 type Content = string | (Omit<MessageEditOptions, "flags" | "embeds"> & Pick<InteractionReplyOptions, "embeds">) | MessagePayload;
 
-export class MessageHandler
-{
+export class MessageHandler {
     message: Promise<Message> | undefined;
     interaction: MessageComponentInteraction<CacheType> | undefined;
     sender: (content: Content) => Promise<Message<boolean>>
@@ -39,7 +38,7 @@ export class MessageHandler
                     this.interaction && !this.interaction.deferred && this.interaction.deferUpdate();
                     this.interaction = undefined;
                 });
-            } catch (error) {
+            } catch(error) {
                 console.error(error);
             }
         } else {

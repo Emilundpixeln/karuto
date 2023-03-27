@@ -14,7 +14,7 @@ wss_sender.on('connection', function connection(ws) {
     if(reciever != null && reciever.readyState === WebSocket.OPEN && last_message != undefined) {
         reciever.send(last_message);
     }
- 
+
 });
 
 export const spot_sync = (t: Trpc) => t.procedure

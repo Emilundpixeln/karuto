@@ -2,8 +2,8 @@ import { collect_by_prefix, get_most_recent_message, get_nth_most_recent_message
 import { MessageHandler } from "./message_handler.js";
 
 let do_regex_replace = (m: MessageHandler, regex: string, template: string, source: string) => {
-    try { 
- 
+    try {
+
         let re = new RegExp(regex, "g");
         let str = source;
 
@@ -22,14 +22,14 @@ let do_regex_replace = (m: MessageHandler, regex: string, template: string, sour
         });
 
         m.send(str);
-    } catch (error) {
+    } catch(error) {
         m.send(`${error}`);
     }
-}   
+}
 
 collect_by_prefix("oexre", async (m, cont) => {
     if(m.author.bot) return;
-    if (!cont.includes("/")) return m.reply("Provide regex, template and optional message offset seperated by `/`");
+    if(!cont.includes("/")) return m.reply("Provide regex, template and optional message offset seperated by `/`");
     let [regex, template, offset] = cont.split("/");
     let offset_i = offset && !isNaN(Number(offset)) && Number(offset) > 0 ? Math.floor(Number(offset)) : 1
     await m.channel.messages.fetch()
@@ -48,7 +48,7 @@ register_command(new SlashCommand().setDMPermission(true).setDescription("Replac
     })
 collect_by_prefix("oexre", async (m, cont) => {
     if(m.author.bot) return;
-    if (!cont.includes("/")) return m.reply("Provide regex, template and optional message offset seperated by `/`");
+    if(!cont.includes("/")) return m.reply("Provide regex, template and optional message offset seperated by `/`");
     let [regex, template, offset] = cont.split("/");
     let offset_i = offset && !isNaN(Number(offset)) && Number(offset) > 0 ? Math.floor(Number(offset)) : 1
     await m.channel.messages.fetch()

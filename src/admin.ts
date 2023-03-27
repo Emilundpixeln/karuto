@@ -40,7 +40,7 @@ let parse_series_to_add = (text: string): string[] => {
 };
 
 let parse_chars_to_add = (text: string): { series: string, char: string }[] => {
-    return text.split("\n").map(s => {    
+    return text.split("\n").map(s => {
         let series_closing_paranthesis = s.lastIndexOf(")");
         if(series_closing_paranthesis < 0) return undefined;
         let i = series_closing_paranthesis - 1;
@@ -94,14 +94,14 @@ collect(async (mess) => {
     if(res.added_series.length != 0)
         resp += `Added ${res.added_series.map(s => `\`${s}\``).join(", ")}.${res.added_series.length != res.to_add_series_length ? " Rest was already added." : ""}`;
     if(res.added_chars_length != 0)
-        resp += `\nAdded ${res.added_chars_length} character${res.added_chars_length == 1 ? "" : "s"}` 
+        resp += `\nAdded ${res.added_chars_length} character${res.added_chars_length == 1 ? "" : "s"}`
     if(resp.length > 0)
         mess.reply(resp);
 
 }, {
-    filter: (mess) => mess.author.id == "996856694611120230" 
+    filter: (mess) => mess.author.id == "996856694611120230"
         && mess.channelId == KARUTA_UPDATE_CHANNEL_ID
-        && mess.embeds.length > 0                      
+        && mess.embeds.length > 0
 });
 
 on_client_available(async (client) => {
@@ -110,7 +110,7 @@ on_client_available(async (client) => {
         let channel = await client.channels.fetch(KARUTA_UPDATE_CHANNEL_ID) as TextBasedChannel;
         let i = 0;
         get_all_messages_untill(channel, async msg => {
-            if(!(msg.author.id == "996856694611120230" 
+            if(!(msg.author.id == "996856694611120230"
                 && msg.channelId == KARUTA_UPDATE_CHANNEL_ID
                 && msg.embeds.length > 0))
                 return false;
@@ -121,20 +121,18 @@ on_client_available(async (client) => {
             if(res == null) return true;
 
             let { added_series, added_chars_length, to_add_series_length } = res;
-    
-            if(added_series.length == 0 && added_chars_length == 0)
-            {
+
+            if(added_series.length == 0 && added_chars_length == 0) {
                 // just stop on already added series
                 return to_add_series_length != 0 && i++ > 10; //!(to_add.length == 0 && chars_to_add.length == 0);
             }
-            else
-            {
+            else {
                 let resp = ""
                 if(added_series.length != 0)
                     resp += `Added ${added_series.map(s => `\`${s}\``).join(", ")}.${added_series.length != to_add_series_length ? " Rest was already added." : ""}`;
                 if(added_chars_length != 0)
-                    resp += `\nAdded ${added_chars_length} character${added_chars_length == 1 ? "" : "s"}` 
-                
+                    resp += `\nAdded ${added_chars_length} character${added_chars_length == 1 ? "" : "s"}`
+
                 if(resp.length > 0)
                     msg.reply(resp);
                 return false;
