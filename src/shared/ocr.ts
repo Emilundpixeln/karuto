@@ -23,7 +23,7 @@ export let reload = async () => {
     }
     let path = process.env.KARUTO_IMG_REC_PATH;
     if(!path || !existsSync(path)) {
-        console.log(`No Ocr available. Searched at ${path}`, process.env, process.env.KARUTO_IMG_REC_PATH);
+        console.log(`No Ocr available. Searched at ${path} (process.env.KARUTO_IMG_REC_PATH) cwd:${process.cwd()}`, process.env.KARUTO_IMG_REC_PATH);
         return;
     }
     console.log("Ocr available");
