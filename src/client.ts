@@ -1,7 +1,7 @@
 import { createTRPCProxyClient, httpBatchLink } from '@trpc/client';
 import type { AppRouter } from './server/index.js';
 
-const endpoint = `http://${process.env.API_ENDPOINT ?? "localhost"}:3000/trpc`;
+const endpoint = `http://${process.env.API_ENDPOINT ?? "localhost"}:3000`;
 export const api = createTRPCProxyClient<AppRouter>({
     links: [
         httpBatchLink({

@@ -1,17 +1,12 @@
-import { inferAsyncReturnType, initTRPC } from '@trpc/server';
-import * as trpcExpress from '@trpc/server/adapters/express';
-import express from 'express'
+import { initTRPC } from '@trpc/server';
+import { createHTTPHandler } from '@trpc/server/adapters/standalone';
+import { createServer } from 'http';
 import { search } from "./search.js"
 import { youtube_get_first_frame } from './image.js';
 import { adminRouter } from './admin.js';
 import { spot_sync } from './spot_sync.js';
 
-const createContext = ({
-    req,
-    res,
-}: trpcExpress.CreateExpressContextOptions) => ({}); // no context
-type Context = inferAsyncReturnType<typeof createContext>;
-const trpc = initTRPC.context<Context>().create();
+const trpc = initTRPC.create();
 export type Trpc = typeof trpc;
 
 
@@ -29,13 +24,15 @@ const appRouter = trpc.router({
 
 export type AppRouter = typeof appRouter;
 
-const app = express();
-app.use(
-    '/trpc',
-    trpcExpress.createExpressMiddleware({
-        router: appRouter,
-        createContext,
-    }),
-);
+
+const handler = createHTTPHandler({
+    router: appRouter,
+    createContext() {
+        return {};
+    },
+});
+let server = createServer((req, res) => {
+    handler(req, res);
+});
 console.log("Started server...");
-app.listen(3000);
+server.listen(3000);
