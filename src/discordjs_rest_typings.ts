@@ -1,7 +1,7 @@
-import { CDN, RequestManager, RESTOptions, REST, RouteLike, RequestData, InternalRequest } from '@discordjs/rest';
-import { Routes as Routes_ } from 'discord-api-types/v9';
-import { HexColorString, Snowflake, User } from 'discord.js';
-import Dispatcher from 'undici/types/dispatcher';
+import { CDN, RequestManager, RouteLike, RequestData, InternalRequest } from "@discordjs/rest";
+import { Routes as Routes_ } from "discord-api-types/v9";
+import { HexColorString, Snowflake, User } from "discord.js";
+import Dispatcher from "undici/types/dispatcher";
 
 export type RoutesTypings = {
     user: Pick<User, "id" | "username" | "avatar" | "discriminator" | "banner"> & {
@@ -30,6 +30,8 @@ export const Routes = {
 export type typed_REST = {
     get<T extends keyof (RoutesTypings)>(fullRoute: ReturnType<typeof Routes[T]>, options?: RequestData): Promise<RoutesTypings[T]>;
 
+    get(fullRoute: RouteLike, options?: RequestData): Promise<unknown>;
+
     readonly cdn: CDN;
     readonly requestManager: RequestManager;
 
@@ -38,9 +40,6 @@ export type typed_REST = {
     setAgent(agent: Dispatcher): typed_REST;
 
     setToken(token: string): typed_REST;
-
-    get(fullRoute: RouteLike, options?: RequestData): Promise<unknown>;
-
 
     delete(fullRoute: RouteLike, options?: RequestData): Promise<unknown>;
 

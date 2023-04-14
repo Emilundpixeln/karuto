@@ -1,15 +1,15 @@
-import { readFileSync } from "fs"
-import fetch from "node-fetch-commonjs"
+import { readFileSync } from "fs";
+import fetch from "node-fetch-commonjs";
 
-let token = JSON.parse(readFileSync("token.json", { encoding: "utf-8" })).token;
+const token = JSON.parse(readFileSync("token.json", { encoding: "utf-8" })).token;
 
-let get_messages = async (user_id: string, guild_id: string) => {
+const get_messages = async (user_id: string, guild_id: string) => {
 
-    let times = [];
+    const times = [];
 
     while(times.length < 1000) {
 
-        let res = await fetch(`https://discord.com/api/v9/guilds/${guild_id}/messages/search?author_id=${user_id}&offset=${times.length + 20}`, {
+        const res = await fetch(`https://discord.com/api/v9/guilds/${guild_id}/messages/search?author_id=${user_id}&offset=${times.length + 20}`, {
             "headers": {
                 "accept": "*/*",
                 "accept-language": "de-DE,de;q=0.9,en-US;q=0.8,en;q=0.7",
@@ -29,7 +29,7 @@ let get_messages = async (user_id: string, guild_id: string) => {
         });
 
 
-        let json = await res.json() as {
+        const json = await res.json() as {
             total_results: number,
             messages: Array<[{
                 id: string,
@@ -40,17 +40,17 @@ let get_messages = async (user_id: string, guild_id: string) => {
         if(!json.messages)
             break;
         console.log(json);
-        let to_date = (time: string) => Number(((BigInt(time) >> BigInt(22)) + BigInt(1420070400000)) / BigInt(1000));
+        const to_date = (time: string) => Number(((BigInt(time) >> BigInt(22)) + BigInt(1420070400000)) / BigInt(1000));
         times.push(...json.messages.map(val => {
-            let hour = Math.floor(to_date(val[0].id) / 60 / 60) % 24;
+            const hour = Math.floor(to_date(val[0].id) / 60 / 60) % 24;
 
             return hour;
         }));
     }
     console.log(times);
-    let hours = new Array(24).fill(0);
+    const hours = new Array(24).fill(0);
     times.map(h => hours[h] += 1);
     console.log(hours);
-}
+};
 
 get_messages("626805934655799297", "696070301842276353");

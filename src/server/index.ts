@@ -1,10 +1,10 @@
-import { initTRPC } from '@trpc/server';
-import { createHTTPHandler } from '@trpc/server/adapters/standalone';
-import { createServer } from 'http';
-import { search } from "./search.js"
-import { youtube_get_first_frame } from './image.js';
-import { adminRouter } from './admin.js';
-import { spot_sync } from './spot_sync.js';
+import { initTRPC } from "@trpc/server";
+import { createHTTPHandler } from "@trpc/server/adapters/standalone";
+import { createServer } from "http";
+import { search } from "./search.js";
+import { youtube_get_first_frame } from "./image.js";
+import { adminRouter } from "./admin.js";
+import { spot_sync } from "./spot_sync.js";
 
 const trpc = initTRPC.create();
 export type Trpc = typeof trpc;
@@ -13,7 +13,7 @@ export type Trpc = typeof trpc;
 const uptime_begin = Date.now();
 
 const appRouter = trpc.router({
-    ping: trpc.procedure.query(res => ({
+    ping: trpc.procedure.query(_ => ({
         started_at: uptime_begin
     })),
     search: search(trpc),
@@ -31,7 +31,7 @@ const handler = createHTTPHandler({
         return {};
     },
 });
-let server = createServer((req, res) => {
+const server = createServer((req, res) => {
     handler(req, res);
 });
 console.log("Started server...");

@@ -1,6 +1,6 @@
-import { spawn, ChildProcessWithoutNullStreams } from "child_process"
+import { spawn, ChildProcessWithoutNullStreams } from "child_process";
 
-import { existsSync } from "fs"
+import { existsSync } from "fs";
 
 
 
@@ -11,17 +11,16 @@ let cur_resolve = undefined as undefined | ((value: [OCR_Data[] | undefined, str
 let cur_promise = undefined as undefined | Promise<OCR_Data[] | undefined>;
 
 let cur_begin = undefined as undefined | number;
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 let child = undefined as undefined | ChildProcessWithoutNullStreams;
 let current_stdout = "";
 
-export let reload = async () => {
+export const reload = async (img_rec_path?: string) => {
     current_stdout = "";
     if(child) {
         child.stdout.removeAllListeners("data");
         child.kill();
     }
-    let path = process.env.KARUTO_IMG_REC_PATH;
+    const path = img_rec_path ?? process.env.KARUTO_IMG_REC_PATH;
     if(!path || !existsSync(path)) {
         console.log(`No Ocr available. Searched at ${path} (process.env.KARUTO_IMG_REC_PATH) cwd:${process.cwd()}`, process.env.KARUTO_IMG_REC_PATH);
         return;
@@ -29,7 +28,7 @@ export let reload = async () => {
     console.log("Ocr available");
     child = spawn(path, ["-keepalive"]);
     child.stderr.on("data", (data: Buffer) => {
-        let out = data.toString("utf-8");
+        const out = data.toString("utf-8");
         console.log("stderr\n", out);
     });
 
@@ -41,8 +40,8 @@ export let reload = async () => {
         }
         // console.log("buff have EOF!", "Buf ---\n", buff, "\n---");
 
-        let res = current_stdout.split("\n").filter(s => s.length > 0 && s[0] != "[" && s != "EOF").slice(1).map(line => {
-            let vals = line.split("\t");
+        const res = current_stdout.split("\n").filter(s => s.length > 0 && s[0] != "[" && s != "EOF").slice(1).map(line => {
+            const vals = line.split("\t");
             if(vals.length < 7) {
                 console.error(`KarutoImgReg.exe error Stdout is ${current_stdout}`);
                 return undefined;
@@ -55,7 +54,7 @@ export let reload = async () => {
                 confidence: parseFloat(vals[4]),
                 raw_c: vals[5],
                 raw_s: vals[6],
-            }
+            };
         });
         //  console.log(res);
         if(!cur_resolve) {
@@ -76,21 +75,23 @@ export let reload = async () => {
         current_stdout = "";
     });
 };
-reload();
 
-export let recognize = async (url: string, log_file: boolean) => {
+export const recognize = async (url: string, log_file: boolean, img_rec_path?: string) => {
     if(cur_promise) await cur_promise;
-    if(!child) return undefined;
+    if(!child) {
+        await reload(img_rec_path);
+        if(!child) return;
+    }
     // return undefined on whitespace input
     if(url == "" || /^\s+$/.exec(url)) return undefined;
 
     cur_promise = new Promise<OCR_Data[] | undefined>(resolve => {
-        let resolved = false;
-        let timeout = setTimeout(async () => {
+        const resolved = false;
+        const timeout = setTimeout(async () => {
             if(resolved) return;
             console.error(`OCR timeout on ${url}. Stdout was ---\n${current_stdout}\n---`);
 
-            await reload();
+            await reload(img_rec_path);
 
             cur_resolve = undefined;
             resolve(undefined);
@@ -101,7 +102,7 @@ export let recognize = async (url: string, log_file: boolean) => {
             if(log_file) {
                 console.log(`OCR stdout was: \n${data_stdout[1]}\n------`);
             }
-        }
+        };
 
     });
 
