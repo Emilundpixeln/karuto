@@ -131,4 +131,35 @@ collect_by_prefix("oquery", (m, cont) => {
     let query = cont.trim();
     if(!query) return m.reply("Provide a series or character name to search for.");
     do_query(MessageHandler.as_message_reply(m), query);
-})
+});
+
+register_command(new SlashCommand().setDescription("Export wishlist data").setName("export_wl_data"), i => {
+    i.reply({
+        files: [{
+            attachment: "wl_data.json",
+            name: "wl_data.json"
+        }]
+    });
+});
+
+const do_list_activities = async (m: MessageHandler, guild: Guild | null, member_id: string) => {
+    if(!guild) return m.send("Can't be used outside of a server!");
+
+    const member = await guild.members.fetch(member_id);
+    if(!member) return m.send("Can't fetch member!");
+    m.send("```" + JSON.stringify(member.presence?.activities, (_, value) => value ? value : undefined, 2) + "```");
+};
+
+register_command(new SlashCommand().setDescription("See all activities of a user").setName("list_activities").setDMPermission(false)
+    .addUserOption(o => o.setDescription("The user").setName("user").setRequired(false)), async i => {
+        const id = i.options.getUser("user", false)?.id ?? i.user.id;
+        do_list_activities(MessageHandler.as_interaction_command_reply(i), i.guild, id);
+    });
+
+
+collect_by_prefix("olistact", async (m, cont) => {
+    let id = cont.trim();
+    if(!id) id = m.author.id;
+
+    do_list_activities(MessageHandler.as_message_reply(m), m.guild, id);
+});
