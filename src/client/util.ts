@@ -3,7 +3,7 @@ import { ActivityTypes } from "discord.js/typings/enums";
 import { api_available } from "./client.js";
 import { collect_by_prefix, SlashCommand, register_command, on_client_available } from "./collector.js";
 import { MessageHandler } from "./message_handler.js";
-import { series_strs, wl_data, wl_data_too_new } from "./shared/klu_data.js";
+import { series_strs, wl_data, wl_data_too_new } from "../shared/klu_data.js";
 
 export let send_offset_ms = 0;
 
@@ -119,7 +119,7 @@ const do_query = (m: MessageHandler, query: string) => {
     // [series, character, wl_data]
     const chars = Object.entries(wl_data).map(s => Object.entries(s[1]).filter(c => c[0].toLowerCase().includes(lowercase)).map(c => [s[0], ...c] as const)).flat();
     const text = serieses.map(v => `Series: **${v}**\n`).join("") + chars.map(v => `**${v[0]}** ${v[1]} \`♡${v[2].wl == wl_data_too_new ? "NEW" : v[2].wl}\``).join("\n");
-    m.send(text.length > 3000 ? text.slice(0, 2997) + "..." : text);
+    m.send(text.length > 3000 ? text.slice(0, 2997) + "..." : text || "No results found.");
 };
 
 register_command(new SlashCommand().setDescription("Query series- and characterdata").setName("query")

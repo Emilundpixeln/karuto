@@ -1,8 +1,8 @@
 import { collect_by_prefix_and_filter, collect, on_client_available, get_all_messages_untill } from "./collector.js";
-import { reload_data } from "./shared/klu_data.js";
+import { reload_data } from "../shared/klu_data.js";
 import { KARUTA_UPDATE_CHANNEL_ID } from "./constants.js";
 import { TextBasedChannel } from "discord.js";
-import { reload } from "./shared/ocr.js";
+import { reload } from "../shared/ocr.js";
 import { api, api_unavailable_error_message, on_api_connect } from "./client.js";
 
 

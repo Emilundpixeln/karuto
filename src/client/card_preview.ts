@@ -1,6 +1,6 @@
 import Discord from "discord.js";
 import fetch from "node-fetch";
-import { url_to_ident, klu_data } from "./shared/klu_data.js";
+import { url_to_ident, klu_data } from "../shared/klu_data.js";
 import { collect2, Deleter, hook_message_updates, MessageType } from "./collector.js";
 import { KARUTA_ID } from "./constants.js";
 

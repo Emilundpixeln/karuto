@@ -1,4 +1,4 @@
-import { url_to_ident, url_to_ed, ident_to_url } from "./shared/klu_data.js";
+import { url_to_ident, url_to_ed, ident_to_url } from "../shared/klu_data.js";
 import { collect_by_prefix, hook_message_updates, is_reply_to_command } from "./collector.js";
 import { MessageHandler } from "./message_handler.js";
 import { KARUTA_ID } from "./constants.js";

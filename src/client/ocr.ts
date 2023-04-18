@@ -1,6 +1,6 @@
 import { collect, collect_by_prefix, collect_by_prefix_and_filter, MessageType } from "./collector.js";
 import { MessageEmbed, TextBasedChannel } from "discord.js";
-import { recognize } from "./shared/ocr.js";
+import { recognize } from "../shared/ocr.js";
 import { is_admin } from "./admin.js";
 import { KARUTA_ID } from "./constants.js";
 import { send_offset_ms } from "./util.js";

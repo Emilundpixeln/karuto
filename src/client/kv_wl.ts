@@ -1,5 +1,5 @@
 import { collect } from "./collector.js";
-import { wl_data, wl_data_too_new } from "./shared/klu_data.js";
+import { wl_data, wl_data_too_new } from "../shared/klu_data.js";
 import { KARUTA_ID } from "./constants.js";
 
 collect(async (msg) => {
