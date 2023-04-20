@@ -4,6 +4,7 @@ import { recognize } from "../shared/ocr.js";
 import { is_admin } from "./admin.js";
 import { KARUTA_ID } from "./constants.js";
 import { send_offset_ms } from "./util.js";
+import { MessageAttachment } from "discord.js";
 
 
 
@@ -17,15 +18,14 @@ collect_by_prefix_and_filter("ocrtoggle", (m) => is_admin(m.author.id), async ()
 });
 
 
-const do_ocr = async (url: string, created_timestamp: number, img_width: number | null, reply_to: MessageType) => {
+const do_ocr = async (image: string | MessageAttachment, created_timestamp: number, img_width: number | null, reply_to: MessageType) => {
+
+    // proxy url is 4x faster?
+    const url = typeof image == "string" ? image : image.proxyURL;
+
 
     console.log(`OCR start: ${Date.now() - created_timestamp}`);
-    //https://cdn.discordapp.com/attachments/932713994886721576/1034886603568594984/card.webp
-    //https://media.discordapp.net/attachments/932713994886721576/1035737384224047135/card.webp?width=400&height=200
-    /*if(img_width) {
-        url = `${url}?width=400&height=${img_width > 900 ? "151" : "200"}`;
-        console.log(`Using url ${url}`);
-    }*/
+
     const recognize_result_p = recognize(url, false);
 
     let expire_text = created_timestamp ? `Expires <t:${Math.floor(created_timestamp / 1000) + 60}:R>` : "?";
@@ -105,7 +105,7 @@ collect(async (msg) => {
         || msg.content.endsWith("is dropping 4 cards!") || msg.content == "I'm dropping 4 cards since this server is currently active!")) {
 
         const img = [...msg.attachments.values()][0];
-        do_ocr(img.url, msg.createdTimestamp, img.width, msg);
+        do_ocr(img, msg.createdTimestamp, img.width, msg);
     }
 });
 
@@ -125,7 +125,7 @@ collect_by_prefix("ocr", async (msg_a, cont) => {
                 || msg.content.includes("This drop has expired and the cards can no longer be grabbed"))) {
             const img = [...msg.attachments.values()][0];
 
-            do_ocr(img.url, msg.createdTimestamp, img.width, msg);
+            do_ocr(img, msg.createdTimestamp, img.width, msg);
         }
     }
     else {
@@ -158,6 +158,7 @@ collect_by_prefix("odocr", async (msg, rest) => {
 //loaded.then(async () => console.log(await recognize("https://cdn.discordapp.com/attachments/932713994886721576/1008032097388204142/card.webp", true))) 
 //loaded.then(async () => console.log(await recognize("https://cdn.discordapp.com/attachments/648044573536550922/958036013131902987/card.webp", true)))
 //loaded.then(async () => console.log(await recognize("https://cdn.discordapp.com/attachments/932713994886721576/1007997775717351505/card.webp", true))) 
+
 
 collect(async (msg) => {
 

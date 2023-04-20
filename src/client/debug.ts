@@ -16,6 +16,6 @@ collect_by_prefix("ojson", async (m, cont) => {
     const msg = await (channel as TextBasedChannel).messages.fetch(match[3]);
 
     const str = JSON.stringify(msg, null, 2);
-    m.reply({ embeds: [new MessageEmbed().setDescription(`\`\`\`\n${str.substr(0, 3800).replaceAll("```", "\\`\\`\\`")}\n\`\`\``)] });
+    m.reply({ embeds: [new MessageEmbed().setDescription(`\`\`\`\n${str.substring(0, 3800).replaceAll("```", "\\`\\`\\`")}\n\`\`\``)] });
 });
 
