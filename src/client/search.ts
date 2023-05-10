@@ -133,7 +133,7 @@ const do_search = async (query: string, reply_to: Replyable) => {
     console.log(query);
     const begin = Date.now();
 
-    const result = await api.search.query(query).catch(() => undefined);
+    const result = await api.search.query(query).catch(_ => undefined);
     const my_message = await my_message_p;
 
     if(result == undefined) {

@@ -78,8 +78,12 @@ const do_ocr = async (image: string | MessageAttachment, created_timestamp: numb
                 console.warn(v);
             }
             highest_wl = Math.max(highest_wl, v.wl);
-            return `\`♡${v.wl != -1 ? v.wl : "[NEW]"}\` **${v.char}** ${v.series}${v.confidence >= 0.7 ? "" : "  🚨**Low Confidence**🚨"}${Date.now() - v.date < 1000 * 60 * 60 * 24 * 7 ? "" : " ⌛ "} ||Confidence: ${(100 * v.confidence).toFixed(0)}%||`;
-        }).join("\n") + "\n||Alle Angaben ohne Gewähr||"
+            const wl_text = v.wl != -1 ? v.wl : "[NEW]";
+            const confidence_text = v.confidence >= 0.7 ? "" : "  🚨**Low Confidence**🚨";
+            const out_of_date_text = Date.now() - v.date < 1000 * 60 * 60 * 24 * 7 ? "" : " ⌛ ";
+
+            return `\`♡${wl_text}\` **${v.char}** ${v.series}${confidence_text}${out_of_date_text} ||Confidence: ${(100 * v.confidence).toFixed(0)}%||`;
+        }).join("\n") + `\n||Alle Angaben ohne Gewähr ${Date.now() - begin}ms||`
         : "Error";
 
     const time = created_timestamp ? Date.now() - created_timestamp + send_offset_ms : 0;
@@ -111,27 +115,23 @@ collect(async (msg) => {
 
 
 collect_by_prefix("ocr", async (msg_a, cont) => {
-    if(msg_a.reference) {
-        const msg = await msg_a.fetchReference();
+    if(!msg_a.reference) return do_ocr(cont.trim(), msg_a.createdTimestamp, null, msg_a);
 
-        if(!msg) return;
+    const msg = await msg_a.fetchReference();
 
-        if((is_admin(msg.author.id) && [...msg.attachments.values()].length > 0)
-            || msg.author.id == KARUTA_ID && msg.content
-            && (msg.content.endsWith("is dropping 3 cards!")
-                || msg.content == "I'm dropping 3 cards since this server is currently active!"
-                || msg.content.endsWith("is dropping 4 cards!")
-                || msg.content == "I'm dropping 4 cards since this server is currently active!"
-                || msg.content.includes("This drop has expired and the cards can no longer be grabbed"))) {
-            const img = [...msg.attachments.values()][0];
+    if(!msg) return;
 
-            do_ocr(img, msg.createdTimestamp, img.width, msg);
-        }
+    if((is_admin(msg.author.id) && [...msg.attachments.values()].length > 0)
+        || msg.author.id == KARUTA_ID && msg.content
+        && (msg.content.endsWith("is dropping 3 cards!")
+            || msg.content == "I'm dropping 3 cards since this server is currently active!"
+            || msg.content.endsWith("is dropping 4 cards!")
+            || msg.content == "I'm dropping 4 cards since this server is currently active!"
+            || msg.content.includes("This drop has expired and the cards can no longer be grabbed"))) {
+        const img = [...msg.attachments.values()][0];
+
+        do_ocr(img, msg.createdTimestamp, img.width, msg);
     }
-    else {
-        do_ocr(cont.trim(), msg_a.createdTimestamp, null, msg_a);
-    }
-
 });
 
 

@@ -29,7 +29,7 @@ export const search = (t: Trpc) => t.procedure
 
             const cards = lines.slice(2).map((line) => {
                 const parts = line.split("\t");
-                console.log(parts);
+                if(parts.length < 7) return null;
                 return {
                     print: Number(parts[0]),
                     wl: Number(parts[1]),
@@ -40,9 +40,8 @@ export const search = (t: Trpc) => t.procedure
                     owner: parts[6].trimEnd(),
                 };
 
-            });
+            }).filter(Boolean);
 
-            console.log(cards.slice(0, 10));
             return {
                 cards,
                 matches,
