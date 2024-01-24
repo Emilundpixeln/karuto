@@ -11,7 +11,7 @@ const or_empty = (prefix: string, text: string | null, template = "~", say_none 
 
 const process_yt_url = async (client: Client, url: string) => {
     let result = null as string | null;
-    const full_url = /youtube\.com\/(?:watch\?v=)|(?:shorts\/)([a-zA-Z0-9-_]+)/g.exec(url);
+    const full_url = /youtube\.com\/(?:watch\?v=)([a-zA-Z0-9-_]+)/g.exec(url);
     if(full_url) result = full_url[1];
     const short_url = /youtu\.be\/([a-zA-Z0-9-_])/g.exec(url);
     if(short_url) result = short_url[1];

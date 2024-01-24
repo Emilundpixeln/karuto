@@ -65,6 +65,7 @@ import "./admin.js";
 
 import "./ocr.js";
 import "./regex.js";
+import "./serverstatus.js";
 
 rest.put(
     Routes.applicationCommands("959864966725390388"),
