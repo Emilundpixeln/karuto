@@ -67,6 +67,8 @@ import "./ocr.js";
 import "./regex.js";
 import "./serverstatus.js";
 
+import "./zloa/main.js";
+
 rest.put(
     Routes.applicationCommands("959864966725390388"),
     { body: get_commands_json() },

@@ -33,6 +33,7 @@ const get_status = async () => {
 let enabled = true;
 
 on_client_available(async (c) => {
+    return;
     const guild = await c.guilds.fetch("1100123024109346946");
     const channel = await guild.channels.fetch("1146485368535920650").catch(_ => null) as TextBasedChannel;
     if(!channel) return;
