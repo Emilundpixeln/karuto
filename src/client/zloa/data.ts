@@ -719,6 +719,28 @@ export const ark_passive: Record<number, [string, string, (Partial<ScaledStat> |
     2325700: ["Trained Cleave", "ark_passive_wa_8", {}, 2, 1, 1],
     2325800: ["Temperature Increase", "ark_passive_wa_9", {}, 2, 1, 2],
     2325900: ["Sunshine's Embrace", "ark_passive_wa_10", {}, 2, 1, 3],
+    233e4: ["Ferality", "ark_passive_dr_1", {}, 1, 0, 1],
+    2330100: ["Phantom Beast Awakening", "dr_skill_01_24", {}, 1, 0, 2],
+    2330200: ["Awakened Potential", "ark_passive_dr_2", {}, 1, 1, 1],
+    2330300: ["Vigor", "ark_passive_01_52", {}, 1, 1, 2],
+    2330400: ["Bestial Resonance", "ark_passive_dr_3", {}, 1, 2, 0],
+    2330500: ["Wild Impulse", "ark_passive_dr_4", {}, 1, 2, 1],
+    2330600: ["Phantom Beast Spirit", "ark_passive_dr_9", {}, 1, 2, 2],
+    2330700: ["Natural Talent", "ark_passive_01_18", {}, 1, 2, 3],
+    2330800: ["Swiftness", "ark_passive_dr_7", {}, 1, 3, 0],
+    2330900: ["Hunter Instinct", "ark_passive_dr_8", {}, 1, 3, 1],
+    2331e3: ["Agile Gait", "ark_passive_dr_5", {}, 1, 3, 2],
+    2331100: ["Phantom Beast Shaman", "ark_passive_01_55", {}, 1, 3, 3],
+    2335e3: ["Transcendent Power", "ark_passive_02_3", {}, 2, 0, 0],
+    2335100: ["Charged Fury", "ark_passive_02_1", {}, 2, 0, 1],
+    2335200: ["Awakening Amplifier", "ark_passive_01_54", {}, 2, 0, 2],
+    2335300: ["Unleashed Power", "ark_passive_02_2", {}, 2, 0, 3],
+    2335400: ["Release Potential", "ark_passive_01_10", {}, 2, 0, 4],
+    2335500: ["Instant Spell", "ark_passive_02_5", {}, 2, 0, 5],
+    2335600: ["Ancient Strength", "ark_passive_dr_10", {}, 2, 1, 0],
+    2335700: ["Nimble Movement", "ark_passive_dr_11", {}, 2, 1, 1],
+    2335800: ["Enhance Unity", "ark_passive_dr_12", {}, 2, 1, 2],
+    2335900: ["Foxbear Fury", "ark_passive_dr_13", {}, 2, 1, 3],
     216e4: ["Brawn", "ark_passive_01_64", {}, 1, 0, 1],
     2160010: ["Mayhem", "ark_passive_bk_1", { crit_rate: 0.1 }, 1, 0, 2],
     2160020: ["Invigoration", "ark_passive_01_9", {}, 1, 1, 1],
@@ -867,6 +889,7 @@ export const elixir_names = {
     10032: "Intelligence",
     10033: "Dexterity",
     10034: "Strength",
+    10035: "Intelligence",
     10100: "Atk. Power",
     10101: "Weapon Power",
     10102: "Escape Expert",
@@ -907,7 +930,7 @@ export const elixir_names = {
     15005: "Vanguard (Chaos)",
     15006: "Luminary (Chaos)",
     15007: "Advance (Chaos)",
-    15008: "Faith (Chaos)",
+    15008: "Faith (Chaos)"
 } as const;
 
 export type ScaledStat = {
@@ -1702,7 +1725,7 @@ export const classes = {
     specialist: "Specialist",
     yinyangshi: "Artist",
     weather_artist: "Aeromancer",
-    alchemist: "Alchemist"
+    alchemist: "Wildsoul"
 } as const;
 
 export const karma_rank_effects: Record<"evolution" | "enlightenment" | "leap", Partial<Stats>> = {

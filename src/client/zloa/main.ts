@@ -786,6 +786,14 @@ function getStat(stat: { type: number; index: number; value: number }, system: (
     if (stat.type == 2) {
         return label(scale(effect_for_base_stat[stats[stat.index]], stat.value), system, stats[stat.index]);
     } else if (stat.type == 3 || stat.type == 4) {
+        if (special_effects[stat.index] == undefined) {
+            return label(
+                {},
+                system,
+                `Unknown Effect ${stat.index}`
+            );
+        }
+
         return label(
             special_effects[stat.index][1],
             system,
@@ -874,13 +882,20 @@ function getSystemsToApply(data: ReturnType<typeof scrape_data>, config: Config)
     increases.push(
         ...data.stone
             .filter((e) => stone_level[e.nodes] >= 1)
-            .map((e) =>
-                label(
-                    scaledStat(stone_effects[e.id][2], stone_level[e.nodes] - 1),
+            .map((e) => {
+                let effect = stone_effects[e.id];
+                if (effect == null) {
+                    // sometimes e.id is an engraving effect (T3 stone from event)
+                    const realId = Object.entries(stone_effects).find(([_, values]) => values[0] == engravings[e.id][0]);
+                    assert(realId);
+                    effect = stone_effects[Number(realId[0])];
+                }
+                return label(
+                    scaledStat(effect[2], stone_level[e.nodes] - 1),
                     "stone",
-                    `${stone_effects[e.id][0]}: ${e.nodes}`
-                )
-            )
+                    `${effect[0]}: ${e.nodes}`
+                );
+            })
     );
 
     if (data.stone.map((e) => stone_level[e.nodes]).reduce(sum, 0) >= 5) {
@@ -892,9 +907,18 @@ function getSystemsToApply(data: ReturnType<typeof scrape_data>, config: Config)
         .map((effect) => elixir_level[effect.points])
         .reduce(sum, 0);
     const effects = data.loadout.elixirs.flatMap((elixir) => elixir.effects);
+
+    effects
+        .filter((effect) => elixir_level[effect.points] >= 1)
+        .filter((effect) => !(effect.id in elixir_names))
+        .forEach(effect => {
+            console.log("unrecognized elixir", effect.id);
+        });
+        
+
     increases.push(
         ...effects
-            .filter((effect) => elixir_level[effect.points] >= 1)
+            .filter((effect) => elixir_level[effect.points] >= 1 && effect.id in elixir_names)
             .map((effect) =>
                 label(
                     scaledStat(
