@@ -1,4 +1,4 @@
-import Discord, { CommandInteraction, MessageManager, TextBasedChannel } from "discord.js";
+import Discord, { AutocompleteInteraction, CommandInteraction, MessageManager, TextBasedChannel } from "discord.js";
 import { SlashCommandBuilder } from "@discordjs/builders";
 
 export const is_reply_to_command = async (m: MessageType, commands: string[]) => {
@@ -79,11 +79,12 @@ export const hook_message_updates = (message: MessageType, callback: (message: M
 
 const commands = [] as {
     proto: Partial<SlashCommandBuilder> & Pick<SlashCommandBuilder, "toJSON">,
-    callback: (interaction: CommandInteraction) => void
+    callback: (interaction: CommandInteraction) => void,
+    autocomplete: ((interaction: AutocompleteInteraction) => void) | undefined
 }[];
 export const SlashCommand = SlashCommandBuilder;
-export const register_command = (command: Partial<SlashCommandBuilder> & Pick<SlashCommandBuilder, "toJSON">, callback: (interaction: CommandInteraction) => void) => {
-    commands.push({ proto: command, callback });
+export const register_command = (command: Partial<SlashCommandBuilder> & Pick<SlashCommandBuilder, "toJSON">, callback: (interaction: CommandInteraction) => void, autocomplete?: (interaction: AutocompleteInteraction) => void) => {
+    commands.push({ proto: command, callback, autocomplete });
 };
 
 export const collect2 = (filter: (message: MessageType) => boolean, callback: (message: MessageType) => void, init: () => void = () => { }, trigger_on_message_update = false): void => {
@@ -121,12 +122,13 @@ export const on_message = (message: MessageType): void => {
 };
 
 export const on_interaction = (interaction: Discord.Interaction<Discord.CacheType>): void => {
-    if(!interaction.isCommand()) return;
+    if(!interaction.isCommand() && !interaction.isAutocomplete()) return;
 
     const com = commands.find(v => v.proto.name == interaction.commandName);
 
     if(com) {
-        com.callback(interaction as CommandInteraction);
+        if(interaction.isCommand()) com.callback(interaction as CommandInteraction);
+        if(interaction.isAutocomplete()) com.autocomplete?.(interaction as AutocompleteInteraction);
     }
     else {
         console.error("Didn't find command for", interaction.commandName);
